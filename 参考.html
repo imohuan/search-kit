@@ -1,0 +1,2627 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>本地文档智搜 Pro</title>
+
+    <!-- 核心依赖 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://unpkg.com/@vueuse/shared"></script>
+    <script src="https://unpkg.com/@vueuse/core"></script>
+    <script src="https://unpkg.com/dexie@3.2.4/dist/dexie.min.js"></script>
+
+    <!-- 图标库 -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- 文件解析库 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <!-- Word 解析依赖 (仅保留 JSZip, 移除 docx-preview) -->
+    <script src="https://unpkg.com/jszip/dist/jszip.min.js"></script>
+
+
+
+    <!-- Tailwind 配置 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        slate: { 50: '#f8fafc', 100: '#f1f5f9', 200: '#e2e8f0', 300: '#cbd5e1', 400: '#94a3b8', 500: '#64748b', 600: '#475569', 700: '#334155', 800: '#1e293b', 900: '#0f172a' },
+                        indigo: { 50: '#eef2ff', 100: '#e0e7ff', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* 自定义全局样式 */
+        body {
+            background-color: #f8fafc;
+            color: #1e293b;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* 隐藏滚动条但保留功能 */
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* 高亮样式 */
+        mark.highlight {
+            background-color: #fef08a;
+            /* yellow-200 */
+            color: #854d0e;
+            /* yellow-800 */
+            padding: 0 2px;
+            border-radius: 2px;
+            font-weight: 600;
+            border-bottom: 2px solid #eab308;
+        }
+
+        /* 动画 */
+        .fade-enter-active,
+        .fade-leave-active {
+            transition: opacity 0.2s ease;
+        }
+
+        .fade-enter-from,
+        .fade-leave-to {
+            opacity: 0;
+        }
+
+        .slide-up-enter-active,
+        .slide-up-leave-active {
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .slide-up-enter-from,
+        .slide-up-leave-to {
+            transform: translateY(100%);
+        }
+
+        /* 自定义滚动条样式 */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 10px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* 修复 docx-preview 原版渲染样式冲突 */
+        .docx-wrapper {
+            background: transparent !important;
+            padding: 0 !important;
+        }
+
+        .docx-wrapper>section.docx {
+            background: white !important;
+            box-shadow: none !important;
+            margin-bottom: 0 !important;
+            padding: 20px !important;
+            /* 还原 Word 页边距 */
+            min-height: auto !important;
+        }
+
+        /* 强制 docx 段落块级显示 */
+        .docx-p {
+            display: block !important;
+            min-height: 1.5em;
+            margin-bottom: 0.8em;
+            line-height: 1.6;
+            word-wrap: break-word;
+        }
+
+        /* 纯文本换行支持 */
+        .plain-text-content {
+            white-space: pre-line;
+            word-wrap: break-word;
+        }
+
+        /* Docx 换行标签强制换行 */
+        .docx-br {
+            display: block;
+            content: "";
+            margin-bottom: 0.3em;
+        }
+
+        /* 文档富文本预览样式 (Prose) */
+        .doc-content-render {
+            color: #334155;
+            line-height: 1.8;
+            word-break: break-word;
+        }
+
+        .doc-content-render p {
+            margin-bottom: 1em;
+        }
+
+        .doc-content-render h1 {
+            font-size: 1.5em;
+            font-weight: 800;
+            margin: 1.2em 0 0.6em;
+            color: #1e293b;
+        }
+
+        .doc-content-render h2 {
+            font-size: 1.3em;
+            font-weight: 700;
+            margin: 1em 0 0.5em;
+            color: #1e293b;
+        }
+
+        .doc-content-render h3 {
+            font-size: 1.1em;
+            font-weight: 700;
+            margin: 0.8em 0 0.4em;
+        }
+
+        .doc-content-render strong {
+            color: #0f172a;
+            font-weight: 700;
+        }
+
+        .doc-content-render table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1em 0;
+            font-size: 0.9em;
+        }
+
+        .doc-content-render th,
+        .doc-content-render td {
+            border: 1px solid #e2e8f0;
+            padding: 0.5em;
+            text-align: left;
+        }
+
+        .doc-content-render th {
+            background-color: #f8fafc;
+            font-weight: 600;
+        }
+
+        .doc-content-render ul {
+            list-style-type: disc;
+            padding-left: 1.5em;
+            margin-bottom: 1em;
+        }
+
+        .doc-content-render ol {
+            list-style-type: decimal;
+            padding-left: 1.5em;
+            margin-bottom: 1em;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="app" class="max-w-md mx-auto h-screen flex flex-col bg-slate-50 relative overflow-hidden shadow-2xl">
+        <!-- 顶栏 -->
+        <nav-bar :active-tab="activeTab" @open-settings="showSettings = true"></nav-bar>
+
+        <!-- 主内容区 -->
+        <main class="flex-1 overflow-hidden relative">
+            <transition name="fade" mode="out-in">
+                <keep-alive>
+                    <search-view v-if="activeTab === 'search'" key="search" @open-detail="openDetail"></search-view>
+                    <library-view v-else-if="activeTab === 'library'" key="library"
+                        @open-preview="openPreview"></library-view>
+                    <extractor-view v-else-if="activeTab === 'extractor'" key="extractor"></extractor-view>
+                </keep-alive>
+            </transition>
+        </main>
+
+        <!-- 底栏导航 -->
+        <tab-bar v-model="activeTab"></tab-bar>
+
+        <!-- 详情弹窗 -->
+        <detail-modal v-model="showDetail" :item="detailItem" :search-keyword="currentSearchKeyword"></detail-modal>
+
+        <!-- 设置弹窗 -->
+        <settings-modal v-model="showSettings"></settings-modal>
+
+        <!-- 全局 Toast -->
+        <toast-message></toast-message>
+
+        <!-- 全局确认弹窗 -->
+        <confirm-modal></confirm-modal>
+    </div>
+
+    <!-- 隐藏的 HTML 解析辅助层 (可选，目前 logic 已移除 docx-preview) -->
+    <div id="html-parser-temp" class="hidden"></div>
+
+
+    <!-- ========================================== -->
+    <!--组件模板定义 (Templates)-->
+    <!-- ========================================== -->
+
+    <!-- 1. 顶部导航组件模板 -->
+    <script type="text/x-template" id="tmpl-nav-bar">
+        <header class="h-14 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-4 sticky top-0 z-20">
+            <h1 class="text-lg font-bold text-slate-800 tracking-tight flex items-center gap-2">
+                <i class="ph-fill ph-read-cv-logo text-indigo-600 text-xl"></i>
+                文档智搜 <span class="text-xs bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-md font-medium">Pro</span>
+            </h1>
+            <button @click="$emit('open-settings')" class="p-2 text-slate-500 hover:text-indigo-600 hover:bg-slate-100 rounded-full transition-colors">
+                <i class="ph ph-gear text-xl"></i>
+            </button>
+        </header>
+    </script>
+
+    <!-- 2. 搜索视图模板 -->
+    <script type="text/x-template" id="tmpl-search-view">
+        <div class="h-full flex flex-col">
+            <!-- 搜索框区域 -->
+            <div class="p-4 bg-white shadow-sm z-10">
+                <!-- 搜索框 -->
+                <div class="relative">
+                    <!-- 左侧：文档配置按钮 -->
+                    <button 
+                        @click="showDocFilter = true"
+                        class="absolute inset-y-0 left-0 pl-3.5 flex items-center z-10 transition-colors"
+                        :class="isDocFilterActive ? 'text-indigo-600' : 'text-slate-400 hover:text-indigo-500'"
+                        title="配置搜索文档"
+                    >
+                        <i class="ph-bold ph-funnel text-lg" :class="isDocFilterActive ? 'ph-fill' : ''"></i>
+                    </button>
+                    
+                    <input 
+                        ref="searchInput"
+                        v-model="query"
+                        @keydown.enter="handleSearch"
+                        type="text" 
+                        class="block w-full pl-11 pr-24 py-3 bg-slate-100 border-transparent text-slate-900 placeholder-slate-400 rounded-xl focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none transition-all text-sm font-medium" 
+                        placeholder="输入关键字 (如: 项...管...理)"
+                    >
+                    
+                    <!-- 右侧：精确搜索切换 + 清除按钮 -->
+                    <div class="absolute inset-y-0 right-0 pr-3 flex items-center gap-1">
+                        <button 
+                            @click="toggleExactSearch"
+                            class="p-1.5 rounded-lg transition-all"
+                            :class="isExactSearch 
+                                ? 'text-indigo-600' 
+                                : 'text-slate-400 hover:text-indigo-500'"
+                            :title="isExactSearch ? '精确搜索：开启' : '精确搜索：关闭'"
+                        >
+                            <i class="ph-bold ph-crosshair text-lg" :class="isExactSearch ? 'ph-fill' : ''"></i>
+                        </button>
+                        <button 
+                            v-if="query" 
+                            @click="clear" 
+                            class="p-1.5 text-slate-400 hover:text-red-500 transition-colors"
+                        >
+                            <i class="ph-fill ph-x-circle text-lg"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 结果列表 -->
+            <div class="flex-1 overflow-y-auto p-4 scrollbar-hide space-y-4 pb-20">
+                <!-- Loading -->
+                <div v-if="isSearching" class="flex flex-col items-center justify-center py-12 space-y-3">
+                    <i class="ph ph-spinner animate-spin text-3xl text-indigo-500"></i>
+                    <p class="text-sm text-slate-400">智能扫描排序中...</p>
+                </div>
+
+                <!-- 空状态 -->
+                <div v-else-if="hasSearched && results.length === 0" class="flex flex-col items-center justify-center py-12 text-slate-400">
+                    <i class="ph ph-files text-4xl mb-2 opacity-50"></i>
+                    <p class="text-sm">未找到符合间隔条件的内容</p>
+                </div>
+
+                <!-- 结果卡片 -->
+                <div 
+                    v-for="item in results" 
+                    :key="item.id + '-' + item.matchIndex"
+                    @click="$emit('open-detail', { ...item, keyword: query })"
+                    class="bg-white rounded-xl p-4 border border-slate-100 shadow-sm active:scale-[0.99] active:bg-slate-50 transition-all cursor-pointer"
+                >
+                    <div class="flex items-center gap-2 mb-2">
+                        <i class="ph-fill ph-file-text text-indigo-500 text-lg"></i>
+                        <h3 class="font-bold text-slate-700 text-sm truncate flex-1">{{ item.fileName }}</h3>
+                        <!-- 显示间隔紧密度评分 -->
+                        <span class="text-[10px] text-indigo-400 bg-indigo-50 px-1.5 py-0.5 rounded">
+                           跨度 {{ item.matchLength }} 字
+                        </span>
+                    </div>
+                    
+                    <!-- 预览片段，应用动态字体大小 -->
+                    <div 
+                        class="text-slate-600 leading-relaxed whitespace-pre-wrap break-words bg-slate-50/50 p-3 rounded-lg border border-slate-50 transition-all"
+                        :style="{ fontSize: currentFontSize + 'px', lineHeight: '1.6' }"
+                    >
+                         <span v-html="item.highlightedSnippet"></span>
+                    </div>
+                    
+                    <div class="mt-2 flex justify-between items-center text-xs text-slate-400">
+                        <span>位置: {{ item.matchIndex }}</span>
+                        <span class="text-indigo-600 font-medium flex items-center gap-1">
+                            查看详情 <i class="ph-bold ph-caret-right"></i>
+                        </span>
+                    </div>
+                </div>
+
+                <div v-if="results.length > 0" class="text-center py-2 text-xs text-slate-300">
+                    - 已显示 {{ results.length }} 条相关结果 (按紧密度排序) -
+                </div>
+            </div>
+
+            <!-- 底部辅助栏 (分页 + 字体滑块 + 剪切板) -->
+            <div class="px-3 py-2 border-t border-slate-100 flex items-center gap-2 bg-white/95 backdrop-blur-sm shrink-0 h-[52px]">
+                  <!-- 提取项分页控制 -->
+                  <div v-if="extractedList.length > 0" class="flex items-center bg-slate-100 rounded-xl border border-slate-200 flex-1 min-w-0 shadow-sm overflow-hidden">
+                    <button @click="prevResult" class="w-8 h-9 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-white transition-all active:scale-90">
+                        <i class="ph-bold ph-caret-left"></i>
+                    </button>
+                    
+                    <!-- 下拉选择触发器 (底部弹窗样式) -->
+                    <div @click="showSnippetDropdown = true" class="px-2 flex-1 min-w-0 h-9 flex items-center justify-center text-[10px] font-black text-indigo-600 cursor-pointer transition-colors group">
+                        <span class="bg-indigo-600 text-white px-1.5 py-0.5 rounded-md mr-1.5 scale-90 shrink-0">{{ currentResultIndex + 1 }}</span>
+                        <span class="truncate">{{ currentExtractedText || '---' }}</span>
+                        <i class="ph-fill ph-caret-down ml-1 text-[8px] opacity-40 group-hover:opacity-100 transition-opacity"></i>
+                    </div>
+
+                    <!-- 重新应用按钮 -->
+                    <button @click="applyResult" class="w-8 h-9 flex items-center justify-center text-indigo-600 transition-all active:scale-90" title="重新应用当前选中内容">
+                        <i class="ph-bold ph-arrows-clockwise"></i>
+                    </button>
+
+                    <button @click="nextResult" class="w-8 h-9 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-white transition-all active:scale-90">
+                        <i class="ph-bold ph-caret-right"></i>
+                    </button>
+                </div>
+
+                 <!-- 字体控制 -->
+                 <div class="flex items-center gap-2 flex-1 min-w-0 bg-slate-50 px-3 h-9 rounded-xl border border-slate-100">
+                    <i class="ph ph-text-t text-slate-400 text-xs"></i>
+                    <input 
+                        type="range" 
+                        v-model.number="currentFontSize" 
+                        :min="config.minFontSize" 
+                        :max="config.maxFontSize" 
+                        class="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                    >
+                    <i class="ph ph-text-t text-slate-600 text-lg"></i>
+                </div>
+
+                <!-- 剪切板标签 (当有内容时显示) -->
+                <transition name="fade">
+                    <button 
+                        v-if="clipboardText && clipboardText !== query"
+                        @click="pasteClipboard"
+                        class="flex items-center gap-1.5 px-3 h-9 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-xl text-xs font-bold transition-all active:scale-95 border border-indigo-100 shrink-0"
+                    >
+                        <i class="ph-bold ph-clipboard-text"></i>
+                        <span class="truncate block max-w-[80px]">{{ clipboardText }}</span>
+                    </button>
+                </transition>
+            </div>
+
+            <!-- 文档筛选配置弹窗 -->
+            <transition name="fade">
+                <div v-if="showDocFilter" class="fixed inset-0 z-50 flex items-end justify-center" @click.self="showDocFilter = false">
+                    <div class="bg-white w-full max-w-md rounded-t-3xl shadow-2xl overflow-hidden" @click.stop>
+                        <!-- 标题栏 -->
+                        <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-gradient-to-r from-indigo-50 to-white">
+                            <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                <i class="ph-fill ph-funnel text-indigo-600"></i>
+                                配置搜索文档
+                            </h3>
+                            <button @click="showDocFilter = false" class="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+                                <i class="ph-bold ph-x text-xl"></i>
+                            </button>
+                        </div>
+
+                        <!-- 工具栏 -->
+                        <div class="flex items-center justify-between px-5 py-3 bg-slate-50 border-b border-slate-100">
+                            <div class="flex items-center gap-2">
+                                <button 
+                                    @click="selectAllDocs"
+                                    class="px-3 py-1.5 text-xs font-bold text-indigo-600 bg-white hover:bg-indigo-50 rounded-lg border border-indigo-100 transition-all active:scale-95"
+                                >
+                                    <i class="ph-bold ph-check-square"></i> 全选
+                                </button>
+                                <button 
+                                    @click="invertDocSelection"
+                                    class="px-3 py-1.5 text-xs font-bold text-slate-600 bg-white hover:bg-slate-100 rounded-lg border border-slate-200 transition-all active:scale-95"
+                                >
+                                    <i class="ph-bold ph-arrows-left-right"></i> 反选
+                                </button>
+                                <button 
+                                    @click="clearAllDocs"
+                                    class="px-3 py-1.5 text-xs font-bold text-slate-500 bg-white hover:bg-slate-100 rounded-lg border border-slate-200 transition-all active:scale-95"
+                                >
+                                    <i class="ph-bold ph-x-square"></i> 清空
+                                </button>
+                            </div>
+                            <div class="text-xs text-slate-500 font-medium">
+                                已选 <span class="text-indigo-600 font-bold">{{ selectedDocIds.size }}</span> / {{ allDocs.length }}
+                            </div>
+                        </div>
+
+                        <!-- 文档列表 -->
+                        <div class="max-h-[60vh] overflow-y-auto custom-scrollbar px-5 py-3 space-y-2">
+                            <div v-if="allDocs.length === 0" class="text-center py-10 text-slate-400">
+                                <i class="ph ph-files text-4xl mb-2 opacity-50"></i>
+                                <p class="text-sm">暂无文档</p>
+                            </div>
+                            <label 
+                                v-for="doc in allDocs" 
+                                :key="doc.id"
+                                class="flex items-center gap-3 p-3 bg-white hover:bg-indigo-50 rounded-xl border border-slate-100 cursor-pointer transition-all group"
+                                :class="selectedDocIds.has(doc.id) ? 'border-indigo-200 bg-indigo-50/50' : ''"
+                            >
+                                <input 
+                                    type="checkbox" 
+                                    :checked="selectedDocIds.has(doc.id)"
+                                    @change="toggleDocSelection(doc.id)"
+                                    class="w-5 h-5 text-indigo-600 border-slate-300 rounded focus:ring-2 focus:ring-indigo-200 cursor-pointer"
+                                >
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <i class="ph-fill ph-file-text text-indigo-500 text-sm"></i>
+                                        <h4 class="font-bold text-sm text-slate-700 truncate">{{ doc.fileName }}</h4>
+                                    </div>
+                                    <p class="text-xs text-slate-400">{{ (doc.content.length / 1000).toFixed(1) }}k 字</p>
+                                </div>
+                            </label>
+                        </div>
+
+                        <!-- 底部按钮 -->
+                        <div class="px-5 py-4 border-t border-slate-100 flex gap-3">
+                            <button 
+                                @click="showDocFilter = false"
+                                class="flex-1 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-all"
+                            >
+                                取消
+                            </button>
+                            <button 
+                                @click="applyDocFilter"
+                                class="flex-1 py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
+                            >
+                                应用筛选
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </transition>
+
+            <!-- 提取项选择弹窗 (效果参考搜索栏过滤) -->
+            <transition name="fade">
+                <div v-if="showSnippetDropdown" class="fixed inset-0 z-[60] flex items-end justify-center" @click.self="showSnippetDropdown = false">
+                    <div class="bg-white w-full max-w-md rounded-t-3xl shadow-2xl overflow-hidden" @click.stop>
+                        <!-- 标题栏 -->
+                        <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-gradient-to-r from-indigo-50 to-white">
+                            <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                <i class="ph-fill ph-selection-plus text-indigo-600"></i>
+                                选择提取项
+                            </h3>
+                            <button @click="showSnippetDropdown = false" class="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+                                <i class="ph-bold ph-x text-xl"></i>
+                            </button>
+                        </div>
+
+                        <!-- 列表内容 -->
+                        <div class="max-h-[60vh] overflow-y-auto custom-scrollbar p-3 space-y-1">
+                            <div 
+                                v-for="(item, idx) in extractedList" 
+                                :key="idx"
+                                @click="currentResultIndex = idx; applyResult(); showSnippetDropdown = false"
+                                class="flex items-center gap-2 p-2 rounded-xl border transition-all cursor-pointer group"
+                                :class="currentResultIndex === idx ? 'bg-indigo-50 border-indigo-200 shadow-sm' : 'bg-white border-transparent hover:bg-slate-50'"
+                            >
+                                <div class="w-5 h-5 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 transition-colors"
+                                     :class="currentResultIndex === idx ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400 group-hover:bg-slate-200'">
+                                    {{ idx + 1 }}
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-bold truncate transition-colors"
+                                       :class="currentResultIndex === idx ? 'text-indigo-700' : 'text-slate-700'">
+                                        {{ item.text }}
+                                    </p>
+                                </div>
+                                <i v-if="currentResultIndex === idx" class="ph-bold ph-check text-indigo-600"></i>
+                            </div>
+                        </div>
+
+                        <!-- 底部确认 -->
+                        <div class="px-5 py-4 border-t border-slate-100">
+                            <button 
+                                @click="showSnippetDropdown = false"
+                                class="w-full py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-all active:scale-[0.98]"
+                            >
+                                关闭
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </transition>
+        </div>
+    </script>
+
+    <!-- 3. 文件库视图模板 -->
+    <script type="text/x-template" id="tmpl-library-view">
+        <div class="h-full flex flex-col p-4">
+            <!-- 上传区域 -->
+            <div class="mb-6">
+                <label class="flex flex-col items-center justify-center w-full h-32 border-2 border-slate-200 border-dashed rounded-2xl cursor-pointer bg-slate-50 hover:bg-indigo-50 hover:border-indigo-300 transition-colors group">
+                    <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                        <div class="w-10 h-10 mb-2 rounded-full bg-indigo-100 flex items-center justify-center group-hover:bg-indigo-200 transition-colors">
+                            <i class="ph-bold ph-upload-simple text-indigo-600 text-xl"></i>
+                        </div>
+                        <p class="mb-1 text-sm font-semibold text-slate-700">点击上传文档</p>
+                        <p class="text-xs text-slate-400">支持 PDF, DOCX, TXT</p>
+                    </div>
+                    <input type="file" class="hidden" multiple accept=".pdf,.docx,.txt" @change="onFileSelect" />
+                </label>
+            </div>
+
+            <!-- 文件列表 -->
+            <div class="flex items-center justify-between mb-3 px-1">
+                <h3 class="font-bold text-slate-700 text-sm">已存储文档 ({{ files.length }})</h3>
+                <button @click="refresh" class="text-xs text-indigo-600 font-medium hover:underline">刷新</button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto scrollbar-hide space-y-3 pb-20">
+                <div v-if="loading" class="space-y-3">
+                    <!-- Skeleton -->
+                    <div v-for="i in 3" class="h-16 bg-slate-200 rounded-xl animate-pulse"></div>
+                </div>
+
+                <div v-else-if="files.length === 0" class="text-center py-10 text-slate-400">
+                    <p class="text-sm">暂无文档，请上传</p>
+                </div>
+
+                <div 
+                    v-for="file in files" 
+                    :key="file.id"
+                    class="group bg-white p-3 rounded-xl border border-slate-100 shadow-sm flex items-center justify-between transition-all active:bg-slate-50"
+                >
+                    <div class="flex items-center gap-3 flex-1 overflow-hidden" @click="$emit('open-preview', file)">
+                        <div class="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
+                            <i class="ph-fill ph-file-text text-xl"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h4 class="text-sm font-bold text-slate-700 truncate">{{ file.fileName }}</h4>
+                            <p class="text-xs text-slate-400 mt-0.5">{{ formatDate(file.date) }} · {{ (file.content.length / 1000).toFixed(1) }}k 字</p>
+                        </div>
+                    </div>
+                    <button 
+                        @click.stop="deleteFile(file.id)" 
+                        class="p-2 text-slate-300 hover:text-red-500 transition-colors"
+                    >
+                        <i class="ph-bold ph-trash text-lg"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </script>
+
+    <!-- 4. 选字提取视图模板 -->
+    <script type="text/x-template" id="tmpl-extractor-view">
+        <div class="h-full flex flex-col overflow-hidden">
+            <!-- 步进切换: 输入模式 / 工作模式 -->
+            <div v-if="currentStep === 'input'" class="p-4 h-full flex flex-col space-y-2 overflow-y-auto scrollbar-hide">
+                <div class="flex-1 flex flex-col gap-2">
+                    <label class="text-sm font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                        <i class="ph-fill ph-text-aa text-indigo-500"></i>
+                        原始文本内容
+                    </label>
+                    <textarea 
+                        v-model="rawText" 
+                        class="w-full flex-1 h-full p-4 border border-slate-200 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all resize-none bg-white shadow-inner text-sm leading-relaxed"
+                        placeholder="在此处粘贴或输入需要处理的文本..."
+                    ></textarea>
+                </div>
+                <div class="flex gap-2">
+                    <button 
+                        @click="initSelection" 
+                        :disabled="!rawText || !rawText.trim()"
+                        class="flex-1 py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98] shadow-lg shadow-indigo-100 flex items-center justify-center gap-2"
+                    >
+                        <i class="ph-bold ph-cursor-click"></i>
+                        进入选字模式
+                    </button>
+                    <button 
+                        @click="pasteFromClipboard" 
+                        class="px-4 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                        title="从剪切板写入"
+                    >
+                        <i class="ph-bold ph-clipboard-text"></i>
+                        粘贴
+                    </button>
+                </div>
+            </div>
+
+            <div v-else class="h-full flex flex-col overflow-hidden">
+                <!-- 内部分栏导航 -->
+                <div class="flex border-b border-slate-100 bg-white relative shrink-0">
+                    <button @click="innerTab = 'select'" 
+                            :class="['flex-1 py-3 text-sm font-bold transition-colors', innerTab === 'select' ? 'text-indigo-600' : 'text-slate-400']">
+                        文本选字
+                    </button>
+                    <button @click="innerTab = 'list'" 
+                            :class="['flex-1 py-3 text-sm font-bold transition-colors relative', innerTab === 'list' ? 'text-indigo-600' : 'text-slate-400']">
+                        提取结果
+                        <span v-if="extractedList.length" class="ml-1.5 px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-bold">
+                            {{ extractedList.length }}
+                        </span>
+                    </button>
+                    <!-- 滑动指示器 -->
+                    <div class="absolute bottom-0 h-0.5 bg-indigo-600 transition-all duration-300 w-1/2"
+                         :style="{ transform: `translateX(${innerTab === 'select' ? '0' : '100'}%)` }"></div>
+                </div>
+
+                <!-- 内容区 -->
+                <div class="flex-1 overflow-hidden relative">
+                    <!-- 选字面板 -->
+                    <div v-show="innerTab === 'select'" class="h-full overflow-y-auto p-2 bg-white scrollbar-hide" ref="gridContainer">
+                        <!-- 使用 flex 布局保持原有换行 -->
+                        <div class="flex flex-wrap gap-1 content-start select-none pb-24"
+                             @touchstart="onGridTouchStart"
+                             @touchmove="onGridTouchMove"
+                             @touchend="onGridTouchEnd">
+                            <template v-for="(char, index) in charList" :key="index">
+                                <!-- 换行符处理 -->
+                                <div v-if="char === '\n'" class="w-full h-0"></div>
+                                <!-- 普通字符 -->
+                                <div v-else
+                                     v-show="!hideSpaces || char.trim() !== ''"
+                                     :data-index="index"
+                                     :class="[
+                                        'relative flex items-center justify-center rounded-[3px] font-medium text-sm transition-all border cursor-pointer',
+                                        char === ' ' ? 'w-3' : '',
+                                        selectedIndices.has(index) 
+                                            ? 'bg-indigo-600 border-indigo-600 text-white z-10 scale-105 shadow-sm' 
+                                            : getExtractedItemIndex(index) !== -1
+                                                ? 'border-slate-200 z-[5]'
+                                                : 'bg-slate-50 border-slate-100/80 text-slate-600'
+                                     ]"
+                                     :style="[
+                                        char !== ' ' ? { width: config.charGridWidth + 'px', height: config.charGridWidth + 'px' } : {},
+                                        !selectedIndices.has(index) && getExtractedItemIndex(index) !== -1 ? getExtractedStyle(index) : {}
+                                     ]">
+                                    {{ char }}
+                                    <!-- 已提取项的序号标注（带透明度） -->
+                                    <span v-if="!selectedIndices.has(index) && getExtractedItemIndex(index) !== -1 && char !== ' '" 
+                                          class="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full text-[9px] font-black flex items-center justify-center shadow-sm"
+                                          :style="{ backgroundColor: getExtractedColor(getExtractedItemIndex(index)), color: 'white' }">
+                                        {{ extractedList.length - getExtractedItemIndex(index) }}
+                                    </span>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- 结果面板 -->
+                    <div v-show="innerTab === 'list'" class="h-full overflow-y-auto p-4 space-y-3 bg-slate-50/50 scrollbar-hide pb-20">
+                        <div v-if="extractedList.length === 0" class="flex flex-col items-center justify-center h-full text-slate-400 opacity-60">
+                            <i class="ph ph-selection-plus text-5xl mb-3"></i>
+                            <p class="text-sm">尚未提取任何文字</p>
+                        </div>
+                        <div v-for="(item, idx) in extractedList" 
+                             :key="idx"
+                             class="flex items-center justify-between p-4 bg-white rounded-xl border border-slate-100 shadow-sm group">
+                            <div @click="editItem(idx)" class="flex-1 cursor-pointer">
+                                <span class="text-[10px] text-indigo-500 font-bold uppercase tracking-wider mb-1 block">项目 #{{ extractedList.length - idx }}</span>
+                                <p class="text-slate-800 font-semibold leading-relaxed whitespace-pre-wrap">{{ item.text }}</p>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <button @click="copyItem(item.text)" class="p-2 text-slate-300 hover:text-indigo-500 transition-colors">
+                                    <i class="ph-bold ph-copy text-lg"></i>
+                                </button>
+                                <button @click="removeItem(idx)" class="p-2 text-slate-300 hover:text-red-500 transition-colors">
+                                    <i class="ph-bold ph-trash text-lg"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 悬浮操作按钮已移除，移动至底部辅助栏 -->
+                </div>
+
+                <!-- 底部辅助栏 (增强版 - 精简 UI) -->
+                <div class="px-4 py-2 border-t border-slate-100 flex items-center justify-between bg-white/95 backdrop-blur-sm shrink-0 h-[52px]">
+                    <button @click="currentStep = 'input'" class="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-colors" title="重设原文">
+                        <i class="ph ph-arrow-left text-lg"></i>
+                    </button>
+                    
+                    <div v-if="innerTab === 'select'" class="flex items-center gap-0.5 bg-slate-100/50 p-0.5 rounded-xl border border-slate-100">
+                        <button @click="hideSpaces = !hideSpaces" 
+                                :class="['w-8 h-8 flex items-center justify-center rounded-lg transition-all', hideSpaces ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600']"
+                                title="切换隐藏空格">
+                            <i :class="hideSpaces ? 'ph-fill ph-ghost' : 'ph-bold ph-selection' " class="text-lg"></i>
+                        </button>
+                        <div class="w-px h-4 bg-slate-200 mx-0.5"></div>
+                        <button @click="clearSymbols" class="w-8 h-8 flex items-center justify-center text-slate-400 active:text-indigo-600 active:bg-slate-200 rounded-lg transition-all" title="快速清除符号">
+                            <i class="ph ph-broom text-lg"></i>
+                        </button>
+                        <button @click="selectAll" class="w-8 h-8 flex items-center justify-center text-slate-400 active:text-indigo-600 active:bg-slate-200 rounded-lg transition-all" title="全选">
+                            <i class="ph ph-check-square text-lg"></i>
+                        </button>
+                        <button @click="invertSelection" class="w-8 h-8 flex items-center justify-center text-slate-400 active:text-indigo-600 active:bg-slate-200 rounded-lg transition-all" title="反选">
+                            <i class="ph ph-arrows-left-right text-lg"></i>
+                        </button>
+                        <button @click="selectedIndices.clear()" class="w-8 h-8 flex items-center justify-center text-slate-400 active:text-red-500 active:bg-red-50 rounded-lg transition-all" title="清空选择">
+                            <i class="ph ph-trash-simple text-lg"></i>
+                        </button>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <button v-if="innerTab === 'select'" 
+                                @click="handleAction" 
+                                :disabled="selectedIndices.size === 0"
+                                class="h-9 px-3 flex items-center gap-1.5 bg-indigo-600 text-white rounded-xl shadow-md shadow-indigo-100 active:scale-95 disabled:opacity-30 disabled:grayscale disabled:shadow-none transition-all"
+                                :title="editingIndex === -1 ? '保存提取' : '更新项目'">
+                            <i class="ph-fill ph-check-circle text-lg"></i>
+                            <span class="text-xs font-bold leading-none">{{ editingIndex === -1 ? '提取' : '更新' }}</span>
+                        </button>
+                        <button v-if="innerTab === 'list' && extractedList.length > 0" 
+                                @click="clearAllResults" 
+                                class="w-9 h-9 flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all active:scale-90 border border-transparent hover:border-red-100" 
+                                title="清空所有结果">
+                            <i class="ph-bold ph-trash text-lg"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </script>
+
+    <!-- 5. 详情弹窗模板 -->
+    <script type="text/x-template" id="tmpl-detail-modal">
+        <transition name="slide-up">
+            <div v-if="modelValue" class="absolute inset-0 z-50 flex flex-col bg-white">
+                <!-- Header -->
+                <div class="h-14 px-4 border-b border-slate-100 flex items-center justify-between bg-white/90 backdrop-blur z-10 basis-14 shrink-0 grow-0">
+                    <button @click="close" class="p-2 -ml-2 text-slate-500 hover:text-slate-800">
+                        <i class="ph-bold ph-caret-down text-xl"></i>
+                    </button>
+                    <h2 class="text-sm font-bold text-slate-800 truncate flex-1 min-w-0 mr-2">{{ item?.fileName }}</h2>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <!-- 字体滑块 -->
+                        <div class="h-8 flex items-center gap-1.5 bg-slate-50 px-2 rounded-full border border-slate-100 mr-1">
+                            <i class="ph ph-text-aa text-slate-400 text-sm"></i>
+                            <input 
+                                type="range" 
+                                v-model.number="currentFontSize"
+                                :min="config.minFontSize" 
+                                :max="config.maxFontSize"  
+                                class="w-16 h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer range-sm"
+                            >
+                            <i class="ph ph-text-aa text-slate-400 text-lg"></i>
+                        </div>
+                        <!-- 模式切换按钮 -->
+                        <button 
+                            @click="toggleMode"
+                            class="h-8 px-3 flex items-center gap-1.5 bg-slate-50 text-slate-500 rounded-full border border-slate-100 transition-all hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-100"
+                            :class="isFullMode ? 'bg-indigo-50 text-indigo-600 border-indigo-100' : ''"
+                            :title="isFullMode ? '当前为全文模式，点击切换到片段模式' : '当前为片段模式，点击切换到全文模式'"
+                        >
+                            <i :class="isFullMode ? 'ph-fill ph-book-open' : 'ph-fill ph-scissors'"></i>
+                            {{ isFullMode ? '全文' : '片段' }}
+                        </button>
+                    </div>
+                    <!-- 样板切换按钮 (全模式/片段模式通用) -->
+                    <div class="ml-1">
+                        <button 
+                            @click="toggleOriginal"
+                            class="h-8 w-8 flex items-center justify-center rounded-full transition-all border border-transparent"
+                            :class="showOriginal ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 hover:border-indigo-100'"
+                            :title="showOriginal ? '显示纯净文本(支持高亮)' : '显示原版样式(背景/颜色)'"
+                        >
+                            <i :class="showOriginal ? 'ph-fill ph-paint-brush-broad' : 'ph-bold ph-paint-brush-broad'" class="text-lg"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Content -->
+                <div class="flex-1 p-5 pr-1 relative bg-white overflow-hidden" ref="contentContainer">
+                   <div class="w-full h-full pr-4 overflow-y-auto custom-scrollbar" ref="scrollContainer">
+                        <div v-if="loading" class="flex justify-center py-10">
+                            <i class="ph ph-spinner animate-spin text-2xl text-indigo-500"></i>
+                        </div>
+                        
+                        <div v-else 
+                            class="doc-content-render max-w-none text-slate-700 leading-8 whitespace-pre-wrap break-words font-sans transition-all"
+                            :style="{ fontSize: currentFontSize + 'px', lineHeight: '1.6' }">
+                            
+                            <!-- 核心渲染区域 -->
+                            <div v-html="displayContent"></div>
+                        </div>
+
+                        <div class="h-40"></div>
+                   </div>
+                </div>
+            </div>
+        </transition>
+        <!-- 遮罩 -->
+        <transition name="fade">
+            <div v-if="modelValue" class="absolute inset-0 bg-black/20 z-40 backdrop-blur-sm" @click="close"></div>
+        </transition>
+    </script>
+
+    <!-- 5. 底部 TabBar 模板 -->
+    <script type="text/x-template" id="tmpl-tab-bar">
+        <div class="h-[60px] bg-white border-t border-slate-200 flex justify-around items-center px-2 z-30 pb-safe">
+            <button 
+                class="flex-1 flex flex-col items-center justify-center h-full gap-1 active:scale-95 transition-transform"
+                :class="modelValue === 'search' ? 'text-indigo-600' : 'text-slate-400'"
+                @click="$emit('update:modelValue', 'search')"
+            >
+                <i :class="modelValue === 'search' ? 'ph-fill ph-magnifying-glass' : 'ph-bold ph-magnifying-glass'" class="text-2xl"></i>
+                <span class="text-[10px] font-medium">智能搜索</span>
+            </button>
+            <button 
+                class="flex-1 flex flex-col items-center justify-center h-full gap-1 active:scale-95 transition-transform"
+                :class="modelValue === 'library' ? 'text-indigo-600' : 'text-slate-400'"
+                @click="$emit('update:modelValue', 'library')"
+            >
+                <i :class="modelValue === 'library' ? 'ph-fill ph-books' : 'ph-bold ph-books'" class="text-2xl"></i>
+                <span class="text-[10px] font-medium">文档库</span>
+            </button>
+            <button 
+                class="flex-1 flex flex-col items-center justify-center h-full gap-1 active:scale-95 transition-transform"
+                :class="modelValue === 'extractor' ? 'text-indigo-600' : 'text-slate-400'"
+                @click="$emit('update:modelValue', 'extractor')"
+            >
+                <i :class="modelValue === 'extractor' ? 'ph-fill ph-selection-plus' : 'ph-bold ph-selection-plus'" class="text-2xl"></i>
+                <span class="text-[10px] font-medium">选字提取</span>
+            </button>
+        </div>
+    </script>
+
+    <!-- ========================================== -->
+    <!-- 逻辑代码 (Vue + Hooks) -->
+    <!-- ========================================== -->
+
+    <script>
+        const { createApp, ref, reactive, computed, watch, onMounted, onActivated, nextTick, toRef } = Vue;
+        const { useDebounceFn, useStorage, useClipboard } = VueUse;
+
+        // --- 全局配置 (使用 useStorage 实现响应式持久化) ---
+        const globalConfig = useStorage('doc_search_config', {
+            previewRange: 30,    // 搜索结果预览的上下文长度
+            minFontSize: 12,     // 文本阅读器的最小字号
+            maxFontSize: 36,     // 文本阅读器的最大字号
+            maxSearchGap: 30,    // 搜索关键词合并的最大字符间隔
+            detailRange: 200,    // 详情模式下的上下文预览范围
+            charGridWidth: 26    // 选字提取界面的字符网格宽度
+        });
+
+        // --- Shared Defaults ---
+        const extractorDefaultState = {
+            currentStep: 'input',
+            innerTab: 'select',
+            rawText: '',
+            extractedList: [],
+            selectedIndices: [],
+            hideSpaces: false
+        };
+
+        // --- 全局状态管理 Toast ---
+        const toastState = reactive({ show: false, message: '', type: 'success' });
+        const showToast = (msg, type = 'success') => {
+            toastState.message = msg;
+            toastState.type = type;
+            toastState.show = true;
+            setTimeout(() => toastState.show = false, 2000);
+        };
+        const ToastMessage = {
+            setup() { return { toastState } },
+            template: `
+                <transition name="fade">
+                    <div v-if="toastState.show" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[100] bg-slate-800/90 backdrop-blur text-white px-4 py-3 rounded-xl shadow-xl text-sm font-medium flex items-center gap-2 max-w-[80%] text-center">
+                        <i v-if="toastState.type === 'success'" class="ph-fill ph-check-circle text-green-400 text-lg"></i>
+                        <i v-else class="ph-fill ph-warning-circle text-red-400 text-lg"></i>
+                        {{ toastState.message }}
+                    </div>
+                </transition>
+            `
+        };
+
+        // --- 全局确认弹窗组件 ---
+        const confirmState = reactive({
+            show: false,
+            title: '',
+            message: '',
+            confirmText: '确认',
+            cancelText: '取消',
+            type: 'info',
+            resolve: null
+        });
+
+        const showConfirm = (opts) => {
+            confirmState.title = opts.title || '确认提示';
+            confirmState.message = opts.message || '';
+            confirmState.confirmText = opts.confirmText || '确认';
+            confirmState.cancelText = opts.cancelText || '取消';
+            confirmState.type = opts.type || 'info';
+            confirmState.show = true;
+            return new Promise((resolve) => {
+                confirmState.resolve = resolve;
+            });
+        };
+
+        const ConfirmModal = {
+            setup() {
+                const handleCancel = () => {
+                    confirmState.show = false;
+                    if (confirmState.resolve) confirmState.resolve(false);
+                };
+                const handleConfirm = () => {
+                    confirmState.show = false;
+                    if (confirmState.resolve) confirmState.resolve(true);
+                };
+                return { confirmState, handleCancel, handleConfirm };
+            },
+            template: `
+                <transition name="fade">
+                    <div v-if="confirmState.show" class="fixed inset-0 z-[200] flex items-center justify-center p-4">
+                        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" @click="handleCancel"></div>
+                        <div class="bg-white rounded-[2rem] w-full max-w-[320px] overflow-hidden relative shadow-2xl z-20 transform transition-all">
+                            <div class="p-8 text-center">
+                                <div :class="[
+                                    'w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5 rotate-3 shadow-inner transition-colors',
+                                    confirmState.type === 'danger' ? 'bg-red-50 text-red-500' : 'bg-indigo-50 text-indigo-600'
+                                ]">
+                                    <i :class="[
+                                        'ph-fill text-3xl',
+                                        confirmState.type === 'danger' ? 'ph-warning-circle' : 'ph-question'
+                                    ]"></i>
+                                </div>
+                                <h3 class="text-xl font-black text-slate-800 mb-2">{{ confirmState.title }}</h3>
+                                <p class="text-sm text-slate-500 leading-relaxed">{{ confirmState.message }}</p>
+                            </div>
+                            <div class="flex p-4 gap-3 bg-slate-50/50">
+                                <button @click="handleCancel" class="flex-1 py-3.5 text-sm font-bold text-slate-400 bg-white hover:bg-slate-100 rounded-2xl transition-all border border-slate-100 active:scale-95">
+                                    {{ confirmState.cancelText }}
+                                </button>
+                                <button @click="handleConfirm" :class="[
+                                    'flex-1 py-3.5 text-sm font-bold rounded-2xl transition-all shadow-lg active:scale-95 text-white',
+                                    confirmState.type === 'danger' ? 'bg-red-500 shadow-red-200' : 'bg-indigo-600 shadow-indigo-200'
+                                ]">
+                                    {{ confirmState.confirmText }}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </transition>
+            `
+        };
+
+        // --- HOOK: 数据库 (Dexie) ---
+        function useDB() {
+            const db = new Dexie("LocalDocDB_Pro");
+            db.version(3).stores({
+                files: '++id, fileName, date' // content, htmlContent, rawBlob 不建索引
+            });
+            return db;
+        }
+
+        // --- HOOK: 文件解析 ---
+        function useParser() {
+            // 安全初始化 PDF Worker
+            if (typeof pdfjsLib !== 'undefined') {
+                pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+            }
+
+            const parseFile = async (file) => {
+                if (file.type === "application/pdf") {
+                    if (typeof pdfjsLib === 'undefined') {
+                        console.error("PDF.js library failed to load");
+                        return { text: "Error: PDF Parser not loaded", html: null };
+                    }
+                    const ab = await file.arrayBuffer();
+
+                    const pdf = await pdfjsLib.getDocument(ab).promise;
+                    let textParts = [];
+                    let lastY = -1;
+
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        const page = await pdf.getPage(i);
+                        const content = await page.getTextContent();
+
+                        let pageText = "";
+                        content.items.forEach(item => {
+                            // 简单的换行逻辑：如果 Y 坐标变化较大，认为是新行
+                            if (lastY !== -1 && Math.abs(item.transform[5] - lastY) > 5) {
+                                pageText += "\n";
+                            }
+                            pageText += item.str;
+                            lastY = item.transform[5];
+                        });
+                        textParts.push(pageText);
+                    }
+                    const fullText = textParts.join('\n\n---\n\n');
+                    return { text: fullText, html: null }; // PDF 暂不提取 HTML
+
+                } else if (file.name.endsWith(".docx")) {
+                    try {
+                        const arrayBuffer = await file.arrayBuffer();
+                        const zip = await JSZip.loadAsync(arrayBuffer);
+                        const docXml = await zip.file("word/document.xml").async("text");
+
+                        const parser = new DOMParser();
+                        const xmlDoc = parser.parseFromString(docXml, "text/xml");
+                        const body = xmlDoc.getElementsByTagName("w:body")[0];
+
+                        let fullHtml = "";
+                        let fullText = "";
+
+                        // --- 样式映射与辅助函数 ---
+                        const highlightColorMap = {
+                            yellow: "#FFFF00", green: "#00FF00", cyan: "#00FFFF",
+                            magenta: "#FF00FF", blue: "#0000FF", red: "#FF0000",
+                            darkBlue: "#00008B", darkCyan: "#008B8B", darkGreen: "#006400",
+                            darkMagenta: "#8B008B", darkRed: "#8B0000", darkYellow: "#808000",
+                            darkGray: "#A9A9A9", lightGray: "#D3D3D3", black: "#000000"
+                        };
+
+                        const escapeHTML = (str) => str.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+
+                        // 解析 Run (w:r) -> HTML Span
+                        const processRun = (r) => {
+                            const tNode = r.getElementsByTagName("w:t")[0];
+                            if (!tNode) return { text: "", html: "" };
+
+                            const text = tNode.textContent;
+                            const rPr = r.getElementsByTagName("w:rPr")[0];
+                            let styles = [];
+
+                            if (rPr) {
+                                // 字体颜色
+                                const colorNode = rPr.getElementsByTagName("w:color")[0];
+                                if (colorNode) {
+                                    const val = colorNode.getAttribute("w:val");
+                                    if (val && val !== "auto") styles.push(`color: #${val}`);
+                                }
+                                // 背景高亮
+                                const highlightNode = rPr.getElementsByTagName("w:highlight")[0];
+                                if (highlightNode) {
+                                    const val = highlightNode.getAttribute("w:val");
+                                    if (highlightColorMap[val]) styles.push(`background-color: ${highlightColorMap[val]}`);
+                                }
+                                // 背景底纹
+                                const shdNode = rPr.getElementsByTagName("w:shd")[0];
+                                if (shdNode) {
+                                    const fill = shdNode.getAttribute("w:fill");
+                                    if (fill && fill !== "auto" && fill !== "clear") styles.push(`background-color: #${fill}`);
+                                }
+                                // 粗体/斜体
+                                if (rPr.getElementsByTagName("w:b").length > 0) styles.push("font-weight: bold");
+                                if (rPr.getElementsByTagName("w:i").length > 0) styles.push("font-style: italic");
+                                // 字号
+                                const szNode = rPr.getElementsByTagName("w:sz")[0];
+                                if (szNode) {
+                                    const size = parseInt(szNode.getAttribute("w:val"));
+                                    if (!isNaN(size)) styles.push(`font-size: ${size / 2}pt`);
+                                }
+                            }
+
+                            const span = styles.length > 0
+                                ? `<span style="${styles.join('; ')}">${escapeHTML(text)}</span>`
+                                : escapeHTML(text);
+                            return { text, html: span };
+                        };
+
+                        // 解析段落 (w:p)
+                        const processParagraph = (p) => {
+                            let pHtml = "";
+                            let pText = "";
+                            let pStyles = [];
+
+                            // 段落属性: 对齐/缩进/列表
+                            const pPr = p.getElementsByTagName("w:pPr")[0];
+                            if (pPr) {
+                                // 对齐
+                                const jc = pPr.getElementsByTagName("w:jc")[0];
+                                if (jc) {
+                                    const val = jc.getAttribute("w:val");
+                                    const alignMap = { center: 'center', right: 'right', both: 'justify' };
+                                    if (alignMap[val]) pStyles.push(`text-align: ${alignMap[val]}`);
+                                }
+                                // 缩进
+                                const ind = pPr.getElementsByTagName("w:ind")[0];
+                                if (ind) {
+                                    const left = parseInt(ind.getAttribute("w:left"));
+                                    if (!isNaN(left)) pStyles.push(`margin-left: ${left / 20}pt`);
+                                    const firstLine = parseInt(ind.getAttribute("w:firstLine"));
+                                    if (!isNaN(firstLine)) pStyles.push(`text-indent: ${firstLine / 20}pt`);
+                                }
+                                // 简单列表模拟 (只要有 numPr 就当做 list-item)
+                                const numPr = pPr.getElementsByTagName("w:numPr")[0];
+                                if (numPr) {
+                                    pStyles.push("display: list-item");
+                                    pStyles.push("list-style-type: disc"); // 默认圆点，无法准确获取 numbering.xml
+                                    pStyles.push("list-style-position: inside");
+                                    if (!pStyles.some(s => s.startsWith('margin-left'))) {
+                                        pStyles.push("margin-left: 1em");
+                                    }
+                                }
+                            }
+
+                            // 遍历段落内所有子节点（包括 w:r 和 w:br）
+                            const childNodes = p.childNodes;
+                            for (let j = 0; j < childNodes.length; j++) {
+                                const child = childNodes[j];
+                                const nodeName = child.nodeName;
+
+                                if (nodeName === "w:r") {
+                                    // 处理 Run，但也要检查 Run 内部是否有 w:br
+                                    const runChildren = child.childNodes;
+                                    for (let k = 0; k < runChildren.length; k++) {
+                                        const runChild = runChildren[k];
+                                        if (runChild.nodeName === "w:t") {
+                                            // 文本节点
+                                            const { text, html } = processRun(child);
+                                            pHtml += html;
+                                            pText += text;
+                                            break; // processRun 已经处理了整个 run
+                                        } else if (runChild.nodeName === "w:br") {
+                                            // Run 内部的换行
+                                            pHtml += '<br class="docx-br">';
+                                            pText += "\n";
+                                        }
+                                    }
+                                    // 检查是否只有 br 没有 t
+                                    const hasBrOnly = child.getElementsByTagName("w:br").length > 0 &&
+                                        child.getElementsByTagName("w:t").length === 0;
+                                    if (hasBrOnly) {
+                                        pHtml += '<br class="docx-br">';
+                                        pText += "\n";
+                                    }
+                                }
+                                else if (nodeName === "w:br") {
+                                    // 段落级别的换行（不太常见，但以防万一）
+                                    pHtml += '<br class="docx-br">';
+                                    pText += "\n";
+                                }
+                                // 忽略 w:pPr 等非内容节点
+                            }
+
+                            // 组装 P (强制块级显示，确保换行)
+                            const styleStr = pStyles.concat(
+                                "display: block",
+                                "min-height: 1.5em", // 增加最小高度
+                                "margin-bottom: 0.8em", // 增加段间距
+                                "line-height: 1.6",
+                                "word-wrap: break-word"
+                            ).join("; ");
+
+                            // 确保空段落也有高度
+                            const innerContent = pHtml || '<br>';
+                            return {
+                                html: `<div class="docx-p" style="${styleStr}">${innerContent}</div>`,
+                                text: pText + "\n" // 确保纯文本有换行
+                            };
+                        };
+
+                        // 解析表格 (w:tbl)
+                        const processTable = (tbl) => {
+                            let tblHtml = '<table style="border-collapse: collapse; width: 100%; margin: 1em 0; border: 1px solid #ddd;">';
+                            let tblText = "";
+                            const rows = tbl.getElementsByTagName("w:tr");
+
+                            for (let i = 0; i < rows.length; i++) {
+                                tblHtml += "<tr>";
+                                const cells = rows[i].getElementsByTagName("w:tc");
+                                for (let j = 0; j < cells.length; j++) {
+                                    const tc = cells[j];
+                                    let cellHtml = "";
+                                    let cellText = "";
+
+                                    // 单元格内可能包含多个段落，递归处理
+                                    const cellParas = tc.getElementsByTagName("w:p");
+                                    for (let k = 0; k < cellParas.length; k++) {
+                                        const res = processParagraph(cellParas[k]);
+                                        cellHtml += res.html;
+                                        cellText += res.text;
+                                    }
+
+                                    tblHtml += `<td style="border: 1px solid #cbd5e1; padding: 8px;">${cellHtml}</td>`;
+                                    tblText += cellText + " ";
+                                }
+                                tblHtml += "</tr>";
+                                tblText += "\n";
+                            }
+                            tblHtml += "</table>";
+                            return { html: tblHtml, text: tblText };
+                        };
+
+                        // 主遍历循环 (改为获取所有段落的扁平列表，确保不漏掉嵌套内容)
+                        // 注意：为了保持表格结构，我们不能简单地 getElementsByTagName('w:p')，
+                        // 否则表格里的 p 会被重复处理或者脱离表格结构。
+
+                        // 正确做法：递归遍历 body 的子节点，遇到 Table 处理 Table，遇到 P 处理 P。
+                        // 对于嵌套在其他非 Table 容器（如 sdt, textbox）里的 P，递归深入。
+
+                        const traverseNodes = (node) => {
+                            let htmlResult = "";
+                            let textResult = "";
+
+                            for (let i = 0; i < node.childNodes.length; i++) {
+                                const child = node.childNodes[i];
+                                const nodeName = child.nodeName;
+
+                                if (nodeName === "w:p") {
+                                    const res = processParagraph(child);
+                                    htmlResult += res.html;
+                                    textResult += res.text;
+                                }
+                                else if (nodeName === "w:tbl") {
+                                    const res = processTable(child);
+                                    htmlResult += res.html;
+                                    textResult += res.text; // 表格内容也加入纯文本
+                                }
+                                else if (nodeName === "w:sdt" || nodeName === "w:sdtContent" || nodeName === "w:txbxContent" || nodeName === "w:body") {
+                                    // 容器节点，递归进入
+                                    const res = traverseNodes(child);
+                                    htmlResult += res.html;
+                                    textResult += res.text;
+                                }
+                                else if (child.nodeType === 1) { // Element node
+                                    // 其他未知标签，尝试递归寻找内部的 P 或 Tbl
+                                    // 但要避免 w:pPr, w:rPr 这种属性节点
+                                    if (!nodeName.endsWith("Pr")) {
+                                        const res = traverseNodes(child);
+                                        htmlResult += res.html;
+                                        textResult += res.text;
+                                    }
+                                }
+                            }
+                            return { html: htmlResult, text: textResult };
+                        };
+
+                        if (body) {
+                            const finalRes = traverseNodes(body);
+                            fullHtml = finalRes.html;
+                            fullText = finalRes.text;
+                        }
+
+                        // 兜底：如果递归没找到任何内容（极端情况），尝试暴力获取所有 w:p
+                        if (!fullHtml) {
+                            console.warn("Recursive traversal failed, falling back to flat p list");
+                            const allParas = xmlDoc.getElementsByTagName("w:p");
+                            for (let i = 0; i < allParas.length; i++) {
+                                const res = processParagraph(allParas[i]);
+                                fullHtml += res.html;
+                                fullText += res.text;
+                            }
+                        }
+
+                        return { text: fullText, html: fullHtml };
+
+                    } catch (e) {
+                        console.error("Docx parse error", e);
+
+                        // 降级处理
+                        const text = await file.text();
+                        return { text, html: `<pre>${text}</pre>` };
+                    }
+                } else {
+                    const text = await file.text();
+                    return { text, html: null };
+                }
+            };
+
+            const escapeHTML = (str) => str.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+
+            return { parseFile };
+        }
+
+        // --- HOOK: 搜索与高亮引擎 (Core Logic Optimized) ---
+        function useSearchEngine() {
+
+            const escapeRegExp = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+            // 优化 1: 添加 maxGap 参数，限制最大间隔
+            const createSearchRegex = (keyword, maxGap = 30) => {
+                const chars = keyword.split('').filter(c => c.trim() !== '');
+                if (chars.length === 0) return null;
+
+                // 使用 {0,maxGap} 限制匹配长度，避免跨越太远，并解决"前面有词导致不连续"的问题
+                // 懒惰匹配 ? 确保找到最近的组合
+                const gapPattern = `([\\s\\S]{0,${maxGap}}?)`;
+                const pattern = chars.map(c => `(${escapeRegExp(c)})`).join(gapPattern);
+
+                try {
+                    return new RegExp(pattern, 'gi');
+                } catch (e) {
+                    console.error("Regex too complex", e);
+                    return null;
+                }
+            };
+
+            const escapeHTML = (str) => {
+                if (!str) return '';
+                return str.replace(/[&<>"']/g, m => ({
+                    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+                }[m]));
+            };
+
+            const highlightText = (text, keyword, maxGap = 30) => {
+                if (!text) return '';
+                if (!keyword) return escapeHTML(text);
+                const chars = keyword.split('').filter(c => c.trim() !== '');
+                const regex = createSearchRegex(keyword, maxGap);
+                if (!regex) return escapeHTML(text);
+
+                let result = "";
+                let lastIndex = 0;
+                let match;
+                regex.lastIndex = 0;
+
+                while ((match = regex.exec(text)) !== null) {
+                    // 添加匹配项之前的原文（转义）
+                    result += escapeHTML(text.substring(lastIndex, match.index));
+
+                    // 处理匹配项：高亮部分转义后包裹 mark 标签，空隙部分仅转义
+                    let captureGroupIndex = 0;
+                    for (let i = 0; i < chars.length; i++) {
+                        const charPart = match[captureGroupIndex + 1];
+                        result += `<mark class="highlight">${escapeHTML(charPart)}</mark>`;
+                        captureGroupIndex++;
+
+                        if (i < chars.length - 1) {
+                            const gapPart = match[captureGroupIndex + 1];
+                            result += escapeHTML(gapPart);
+                            captureGroupIndex++;
+                        }
+                    }
+
+                    lastIndex = regex.lastIndex;
+                    // 防止死循环
+                    if (match.index === regex.lastIndex) regex.lastIndex++;
+                }
+
+                // 添加剩余部分
+                result += escapeHTML(text.substring(lastIndex));
+                return result;
+            };
+
+            // 新增：基于 DOM Range 的智能 HTML 片段截取
+            const getHtmlFragment = (html, keyword, maxGap = 30, limit = 200) => {
+                if (!html) return '';
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = html;
+
+                // 1. 先进行高亮处理
+                if (keyword) {
+                    highlightHtmlElement(tempDiv, keyword, maxGap);
+                }
+
+                // 2. 如果不需要截取（全文模式使用0或Infinity表示），直接返回
+                if (!limit || limit <= 0) return tempDiv.innerHTML;
+
+                // 3. 寻找截取中心点 (第一个 mark 或开头)
+                let centerNode = null;
+                let centerOffset = 0;
+                const firstMark = tempDiv.querySelector('mark.highlight');
+
+                if (firstMark && firstMark.firstChild) {
+                    centerNode = firstMark.firstChild;
+                    centerOffset = 0;
+                } else {
+                    // 没有匹配项（或者只有纯文本），从头开始
+                    const walker = document.createTreeWalker(tempDiv, NodeFilter.SHOW_TEXT, null, false);
+                    centerNode = walker.nextNode();
+                    centerOffset = 0;
+                }
+
+                if (!centerNode) return tempDiv.innerHTML; // 空内容
+
+                // 4. 计算所有文本节点序列，定位 Range 边界
+                const textNodes = [];
+                const walker = document.createTreeWalker(tempDiv, NodeFilter.SHOW_TEXT, null, false);
+                let node;
+                while (node = walker.nextNode()) {
+                    textNodes.push(node);
+                }
+
+                // 找到 centerNode 在列表中的位置
+                const centerIndex = textNodes.indexOf(centerNode);
+                if (centerIndex === -1) return tempDiv.innerHTML;
+
+                // 向前/向后累加字符长度，找到 startNode 和 endNode
+                let startNode = centerNode, startOffset = centerOffset;
+                let endNode = centerNode, endOffset = centerNode.textContent.length;
+
+                // 向前查找
+                let remaining = limit / 2;
+
+                // 当前节点之前的
+                if (centerIndex >= 0) {
+                    remaining -= centerOffset;
+                    startNode = textNodes[centerIndex];
+                    startOffset = Math.max(0, centerOffset - (limit / 2));
+                }
+
+                for (let j = centerIndex - 1; j >= 0; j--) {
+                    const len = textNodes[j].textContent.length;
+                    if (remaining <= 0) break;
+
+                    if (remaining <= len) {
+                        startNode = textNodes[j];
+                        startOffset = len - remaining;
+                        remaining = 0;
+                    } else {
+                        startNode = textNodes[j];
+                        startOffset = 0;
+                        remaining -= len;
+                    }
+                }
+
+                // 向后查找
+                remaining = limit / 2;
+                if (centerIndex < textNodes.length && textNodes[centerIndex]) {
+                    remaining -= (textNodes[centerIndex].textContent.length - centerOffset);
+                    endNode = textNodes[centerIndex];
+                    endOffset = textNodes[centerIndex].textContent.length;
+                }
+
+                for (let j = centerIndex + 1; j < textNodes.length; j++) {
+                    const len = textNodes[j].textContent.length;
+                    if (remaining <= 0) break;
+
+                    if (remaining <= len) {
+                        endNode = textNodes[j];
+                        endOffset = remaining;
+                        remaining = 0;
+                    } else {
+                        endNode = textNodes[j];
+                        endOffset = len;
+                        remaining -= len;
+                    }
+                }
+
+                // 5. 使用 Range 提取片段 (保留 DOM 结构)
+                try {
+                    const range = document.createRange();
+                    range.setStart(startNode, startOffset);
+                    range.setEnd(endNode, endOffset);
+                    const fragment = range.cloneContents();
+                    const container = document.createElement('div');
+                    container.appendChild(fragment);
+                    return container.innerHTML;
+                } catch (e) {
+                    console.error("Range extraction failed", e);
+                    return tempDiv.innerHTML; // Fallback
+                }
+            };
+
+            // 内部使用的 Element 高亮 (不返回字符串，直接修改 DOM)
+            const highlightHtmlElement = (element, keyword, maxGap = 30) => {
+                const regex = createSearchRegex(keyword, maxGap);
+                if (!regex) return;
+
+                // 1. 获取所有文本节点及其在完整文本中的位置
+                const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, null, false);
+                const textNodes = [];
+                let fullText = "";
+                let node;
+                while (node = walker.nextNode()) {
+                    textNodes.push({
+                        node,
+                        start: fullText.length,
+                        end: fullText.length + node.textContent.length
+                    });
+                    fullText += node.textContent;
+                }
+
+                // 2. 收集所有需要高亮的精确片段 (使用捕获组跳过间隔)
+                let match;
+                const highlightRanges = [];
+                regex.lastIndex = 0;
+
+                while ((match = regex.exec(fullText)) !== null) {
+                    // regex 结构: (char)(gap)(char)(gap)...
+                    // match[0] 是完整匹配
+                    // match[1], match[3]... 是关键词字符 (需要高亮)
+                    // match[2], match[4]... 是间隔 (不需要高亮)
+
+                    let currentPos = match.index;
+
+                    for (let i = 1; i < match.length; i++) {
+                        const segment = match[i];
+                        const len = segment ? segment.length : 0;
+
+                        // 奇数索引为关键词部分 (group 1, 3, 5...)
+                        if (i % 2 === 1) {
+                            if (len > 0) {
+                                highlightRanges.push({
+                                    start: currentPos,
+                                    end: currentPos + len
+                                });
+                            }
+                        }
+
+                        currentPos += len;
+                    }
+
+                    if (match.index === regex.lastIndex) regex.lastIndex++;
+                }
+
+                if (highlightRanges.length === 0) return;
+
+                // 3. 将高亮区间应用到文本节点 (安全遍历)
+                textNodes.forEach(tn => {
+                    // 找出所有落在当前文本节点范围内的高亮区间
+                    const nodeMatches = [];
+                    highlightRanges.forEach(range => {
+                        if (range.start < tn.end && range.end > tn.start) {
+                            nodeMatches.push({
+                                start: Math.max(range.start, tn.start) - tn.start, // 转为节点相对坐标
+                                end: Math.min(range.end, tn.end) - tn.start
+                            });
+                        }
+                    });
+
+                    if (nodeMatches.length === 0) return;
+
+                    // 排序并合并重叠区间
+                    nodeMatches.sort((a, b) => a.start - b.start);
+                    const merged = [];
+                    let current = nodeMatches[0];
+                    for (let i = 1; i < nodeMatches.length; i++) {
+                        if (nodeMatches[i].start <= current.end) {
+                            current.end = Math.max(current.end, nodeMatches[i].end);
+                        } else {
+                            merged.push(current);
+                            current = nodeMatches[i];
+                        }
+                    }
+                    merged.push(current);
+
+                    // 4. 构建包含高亮的 Fragment 替换原节点
+                    const text = tn.node.textContent;
+                    const fragment = document.createDocumentFragment();
+                    let cursor = 0;
+
+                    merged.forEach(m => {
+                        if (m.start > cursor) {
+                            fragment.appendChild(document.createTextNode(text.substring(cursor, m.start)));
+                        }
+                        const newSpan = document.createElement('mark');
+                        newSpan.className = 'highlight';
+                        newSpan.textContent = text.substring(m.start, m.end);
+                        fragment.appendChild(newSpan);
+                        cursor = m.end;
+                    });
+
+                    if (cursor < text.length) {
+                        fragment.appendChild(document.createTextNode(text.substring(cursor)));
+                    }
+
+                    // 只有父节点存在时才替换 (避免潜在的多次操作问题)
+                    if (tn.node.parentNode) {
+                        tn.node.parentNode.replaceChild(fragment, tn.node);
+                    }
+                });
+            };
+
+            return { createSearchRegex, highlightText, getHtmlFragment };
+        }
+
+        // --- COMPONENTS ---
+
+        // 1. NavBar
+        const NavBar = {
+            props: ['activeTab'],
+            template: '#tmpl-nav-bar'
+        };
+
+        // 2. TabBar
+        const TabBar = {
+            props: ['modelValue'],
+            template: '#tmpl-tab-bar'
+        };
+
+        // 3. Search View (Updated)
+        const SearchView = {
+            template: '#tmpl-search-view',
+            setup(props, { emit }) {
+                const db = useDB();
+                const { createSearchRegex, highlightText, getHtmlFragment } = useSearchEngine();
+                const searchInput = ref(null);
+
+                const query = ref('');
+                const results = ref([]);
+                const isSearching = ref(false);
+                const hasSearched = ref(false);
+
+                // 配置控制 (使用全局响应式配置)
+                const config = globalConfig;
+
+                // 提取项分页控制 (共享 Extractor 数据)
+                const extractorStore = useStorage('extractor_v2_data', extractorDefaultState, localStorage, { mergeDefaults: true });
+                const extractedList = computed(() => {
+                    const rawList = extractorStore.value.extractedList || [];
+                    return rawList
+                        .map(item => ({
+                            ...item,
+                            text: (item.text || '').split('\n').filter(l => l.trim()).join('\n')
+                        }))
+                        .filter(item => item.text && item.text.trim() !== '');
+                });
+                const currentResultIndex = ref(0);
+                const showSnippetDropdown = ref(false);
+                const snippetDropdownRef = ref(null);
+
+                // 点击外部关闭下拉菜单
+                VueUse.onClickOutside(snippetDropdownRef, () => {
+                    showSnippetDropdown.value = false;
+                });
+
+                const currentExtractedText = computed(() => {
+                    if (extractedList.value.length === 0) return '';
+                    // 确保索引不越界 (如果列表删除了)
+                    const normalizedIndex = Math.min(currentResultIndex.value, extractedList.value.length - 1);
+                    return extractedList.value[normalizedIndex]?.text || '';
+                });
+
+                const applyResult = () => {
+                    const text = currentExtractedText.value;
+                    if (text) {
+                        query.value = text;
+                        // 强制立即执行一次，不需要等待 debounce
+                        handleSearch();
+                        if (searchInput.value) searchInput.value.blur();
+                    }
+                };
+
+                const nextResult = () => {
+                    if (extractedList.value.length === 0) return;
+                    currentResultIndex.value = (currentResultIndex.value + 1) % extractedList.value.length;
+                    applyResult();
+                };
+
+                const prevResult = () => {
+                    if (extractedList.value.length === 0) return;
+                    currentResultIndex.value = (currentResultIndex.value - 1 + extractedList.value.length) % extractedList.value.length;
+                    applyResult();
+                };
+
+                // 1. 字体控制 State
+                const currentFontSize = ref(16);
+
+                // 2. 剪切板控制 State
+                const { text: clipboardText, isSupported } = useClipboard();
+
+                const pasteClipboard = () => {
+                    if (clipboardText.value) {
+                        query.value = clipboardText.value;
+                        // 插入后失去焦点，符合要求
+                        if (searchInput.value) searchInput.value.blur();
+                        handleSearch();
+                    }
+                };
+
+                // 3. 文档筛选功能
+                const showDocFilter = ref(false);
+                const allDocs = ref([]);
+                const selectedDocIds = reactive(new Set());
+
+                // 使用 localStorage 持久化选中的文档 ID
+                const docFilterStorage = useStorage('doc_filter_ids', { ids: [] });
+
+                // 初始化：从存储恢复选中的文档 ID
+                onMounted(async () => {
+                    await loadAllDocs();
+                    const storedIds = docFilterStorage.value.ids || [];
+                    storedIds.forEach(id => selectedDocIds.add(id));
+                });
+
+                // 每次激活时刷新文档列表 (解决上传后无法筛选的问题)
+                onActivated(() => {
+                    loadAllDocs();
+                });
+
+                // 加载所有文档
+                const loadAllDocs = async () => {
+                    try {
+                        allDocs.value = await db.files.toArray();
+                        // 如果没有选中任何文档（第一次使用），默认全选
+                        if (selectedDocIds.size === 0 && allDocs.value.length > 0) {
+                            allDocs.value.forEach(doc => selectedDocIds.add(doc.id));
+                        }
+                    } catch (err) {
+                        console.error('加载文档失败:', err);
+                    }
+                };
+
+                // 文档筛选是否激活（有筛选时为true）
+                const isDocFilterActive = computed(() => {
+                    return allDocs.value.length > 0 && selectedDocIds.size < allDocs.value.length && selectedDocIds.size > 0;
+                });
+
+                // 切换单个文档选择
+                const toggleDocSelection = (docId) => {
+                    if (selectedDocIds.has(docId)) {
+                        selectedDocIds.delete(docId);
+                    } else {
+                        selectedDocIds.add(docId);
+                    }
+                };
+
+                // 全选文档
+                const selectAllDocs = () => {
+                    allDocs.value.forEach(doc => selectedDocIds.add(doc.id));
+                };
+
+                // 反选文档
+                const invertDocSelection = () => {
+                    const allIds = new Set(allDocs.value.map(doc => doc.id));
+                    const newSelection = new Set();
+                    allIds.forEach(id => {
+                        if (!selectedDocIds.has(id)) {
+                            newSelection.add(id);
+                        }
+                    });
+                    selectedDocIds.clear();
+                    newSelection.forEach(id => selectedDocIds.add(id));
+                };
+
+                // 清空文档选择
+                const clearAllDocs = () => {
+                    selectedDocIds.clear();
+                };
+
+                // 应用文档筛选
+                const applyDocFilter = () => {
+                    // 保存到 localStorage
+                    docFilterStorage.value = { ids: Array.from(selectedDocIds) };
+                    showDocFilter.value = false;
+                    // 重新触发搜索
+                    if (query.value.trim()) {
+                        handleSearch();
+                    }
+                    showToast(`已选择 ${selectedDocIds.size} 个文档`, 'success');
+                };
+
+                // 4. 精确搜索模式
+                const isExactSearch = ref(false);
+
+                const toggleExactSearch = () => {
+                    isExactSearch.value = !isExactSearch.value;
+                    // 如果有搜索内容，重新触发搜索
+                    if (query.value.trim()) {
+                        handleSearch();
+                    }
+                };
+
+                const handleSearch = async () => {
+                    if (!query.value.trim()) return;
+                    isSearching.value = true;
+                    results.value = [];
+                    hasSearched.value = true;
+
+                    try {
+                        // 获取所有文件，但只搜索选中的文档
+                        const allFiles = await db.files.toArray();
+                        const files = allFiles.filter(file => selectedDocIds.has(file.id));
+
+                        if (files.length === 0) {
+                            showToast('未选择任何文档', 'error');
+                            isSearching.value = false;
+                            return;
+                        }
+
+                        let hits = [];
+
+                        if (isExactSearch.value) {
+                            // 精确搜索模式：逐字搜索，不允许间隔
+                            const searchText = query.value;
+                            const regex = new RegExp(escapeRegExp(searchText), 'gi');
+
+                            for (const file of files) {
+                                let fileMatchCount = 0;
+                                let match;
+                                regex.lastIndex = 0;
+
+                                while ((match = regex.exec(file.content)) !== null) {
+                                    if (fileMatchCount > 15) break;
+                                    fileMatchCount++;
+
+                                    const center = match.index;
+                                    const matchStr = match[0];
+                                    const matchLen = matchStr.length;
+                                    const range = config.value.previewRange;
+
+                                    const start = Math.max(0, center - range);
+                                    const end = Math.min(file.content.length, center + matchLen + range);
+                                    const rawSnippet = file.content.substring(start, end).split('\n').filter(l => l.trim()).join('\n');
+
+                                    // 简单高亮（精确匹配）
+                                    const highlighted = rawSnippet.replace(
+                                        regex,
+                                        match => `<mark class="highlight">${escapeHTML(match)}</mark>`
+                                    );
+
+                                    hits.push({
+                                        id: file.id,
+                                        fileName: file.fileName,
+                                        matchIndex: center,
+                                        matchLength: matchLen,
+                                        highlightedSnippet: escapeHTML(rawSnippet).replace(
+                                            new RegExp(escapeRegExp(escapeHTML(searchText)), 'gi'),
+                                            match => `<mark class="highlight">${match}</mark>`
+                                        ),
+                                        fullContent: file.content,
+                                        htmlContent: file.htmlContent
+                                    });
+
+                                    if (match.index === regex.lastIndex) regex.lastIndex++;
+                                }
+                            }
+                        } else {
+                            // 模糊搜索模式：允许间隔
+                            const maxGap = config.value.maxSearchGap || 30;
+                            const regex = createSearchRegex(query.value, maxGap);
+
+                            if (!regex) {
+                                isSearching.value = false;
+                                return;
+                            }
+
+                            for (const file of files) {
+                                let fileMatchCount = 0;
+                                let match;
+                                regex.lastIndex = 0;
+
+                                while ((match = regex.exec(file.content)) !== null) {
+                                    if (fileMatchCount > 15) break;
+                                    fileMatchCount++;
+
+                                    const center = match.index;
+                                    const matchStr = match[0];
+                                    const matchLen = matchStr.length;
+                                    const range = config.value.previewRange;
+
+                                    const start = Math.max(0, center - range);
+                                    const end = Math.min(file.content.length, center + matchLen + range);
+                                    // 列表预览统一使用纯文本 (Text Preview Only)
+                                    // 只有进入详情页预览时才显示 HTML 格式
+                                    const rawSnippet = file.content.substring(start, end).split('\n').filter(l => l.trim()).join('\n');
+                                    const highlightedSnippet = highlightText(rawSnippet, query.value, maxGap);
+
+                                    hits.push({
+                                        id: file.id,
+                                        fileName: file.fileName,
+                                        matchIndex: center,
+                                        matchLength: matchLen,
+                                        highlightedSnippet: highlightedSnippet,
+                                        fullContent: file.content,
+                                        htmlContent: file.htmlContent
+                                    });
+
+                                    if (match.index === regex.lastIndex) regex.lastIndex++;
+                                }
+                            }
+                        }
+
+                        // 排序优化
+                        hits.sort((a, b) => {
+                            if (a.matchLength !== b.matchLength) {
+                                return a.matchLength - b.matchLength;
+                            }
+                            return a.matchIndex - b.matchIndex;
+                        });
+
+                        results.value = hits;
+                    } catch (err) {
+                        console.error('搜索失败:', err);
+                        showToast('搜索失败', 'error');
+                    } finally {
+                        isSearching.value = false;
+                    }
+                };
+
+                // HTML 转义辅助函数
+                const escapeHTML = (str) => {
+                    const div = document.createElement('div');
+                    div.textContent = str;
+                    return div.innerHTML;
+                };
+
+                // 正则转义辅助函数
+                const escapeRegExp = (str) => {
+                    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                };
+
+                const debouncedSearch = useDebounceFn(handleSearch, 800);
+                watch(query, () => {
+                    if (!query.value) {
+                        results.value = [];
+                        hasSearched.value = false;
+                    } else {
+                        debouncedSearch();
+                    }
+                });
+
+                // 监听配置变化自动重搜
+                watch(config, () => {
+                    if (query.value) {
+                        debouncedSearch();
+                    }
+                }, { deep: true });
+
+                const clear = () => { query.value = ''; results.value = []; };
+
+                return {
+                    query, results, isSearching, hasSearched,
+                    handleSearch, clear,
+                    config, currentFontSize, // 字体
+                    clipboardText, pasteClipboard, searchInput, // 剪切板
+                    extractedList, currentExtractedText, currentResultIndex, nextResult, prevResult, applyResult, // 分页控制
+                    showSnippetDropdown, snippetDropdownRef, // 下拉选择
+                    // 文档筛选
+                    showDocFilter, allDocs, selectedDocIds, isDocFilterActive,
+                    toggleDocSelection, selectAllDocs, invertDocSelection, clearAllDocs, applyDocFilter,
+                    // 精确搜索
+                    isExactSearch, toggleExactSearch
+                };
+            }
+        };
+
+        // 4. Library View
+        const LibraryView = {
+            template: '#tmpl-library-view',
+            setup(props, { emit }) {
+                const db = useDB();
+                const { parseFile } = useParser();
+                const files = ref([]);
+                const loading = ref(true);
+
+                const loadFiles = async () => {
+                    loading.value = true;
+                    files.value = await db.files.orderBy('date').reverse().toArray();
+                    loading.value = false;
+                };
+
+                const onFileSelect = async (e) => {
+                    const selectedFiles = Array.from(e.target.files);
+                    if (!selectedFiles.length) return;
+
+                    showToast('开始解析...', 'info');
+                    let successCount = 0;
+
+                    for (const file of selectedFiles) {
+                        try {
+                            const { text, html } = await parseFile(file);
+                            await db.files.add({
+                                fileName: file.name,
+                                content: text,
+                                htmlContent: html,
+                                rawBlob: file, // 存储原始文件 Blob
+                                date: new Date()
+                            });
+                            successCount++;
+                        } catch (err) {
+                            console.error(err);
+                            showToast(`解析失败: ${file.name}`, 'error');
+                        }
+                    }
+                    if (successCount > 0) {
+                        showToast(`成功导入 ${successCount} 个文档`);
+                        loadFiles();
+                    }
+                };
+
+                const deleteFile = async (id) => {
+                    const ok = await showConfirm({
+                        title: '删除文档',
+                        message: '确定要永久删除该文档吗？此操作不可撤销。',
+                        confirmText: '确认删除',
+                        type: 'danger'
+                    });
+                    if (!ok) return;
+                    await db.files.delete(id);
+                    showToast('已删除');
+                    loadFiles();
+                };
+
+                const refresh = loadFiles;
+                const formatDate = (d) => new Date(d).toLocaleDateString();
+
+                onMounted(loadFiles);
+                return { files, loading, onFileSelect, deleteFile, refresh, formatDate };
+            }
+        };
+
+        // 5. Detail Modal
+        const DetailModal = {
+            props: ['modelValue', 'item', 'searchKeyword'],
+            template: '#tmpl-detail-modal',
+            setup(props, { emit }) {
+                const isFullMode = ref(false);
+                const showOriginal = ref(true); // 默认显示原版 HTML 样式
+                const loading = ref(false);
+                const { highlightText, getHtmlFragment } = useSearchEngine();
+                const config = globalConfig;
+                const scrollContainer = ref(null);
+                // const originalContainer = ref(null); // 原版渲染容器 // REMOVED
+
+                // 重置状态
+                watch(() => props.item, (newVal) => {
+                    if (newVal && newVal.isFullPreview) {
+                        isFullMode.value = true;
+                    } else {
+                        isFullMode.value = false;
+                    }
+                    showOriginal.value = true; // 切换文件时默认显示原版 HTML 样式
+                    // if (originalContainer.value) originalContainer.value.innerHTML = ''; // REMOVED
+
+                    nextTick(() => {
+                        if (scrollContainer.value) scrollContainer.value.scrollTop = 0;
+                    });
+                });
+
+                const close = () => emit('update:modelValue', false);
+                const toggleMode = () => {
+                    isFullMode.value = !isFullMode.value;
+                    nextTick(() => {
+                        const mark = scrollContainer.value?.querySelector('mark.highlight');
+                        if (mark) {
+                            mark.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                        }
+                    });
+                };
+
+                // 切换原版/纯净版
+                const toggleOriginal = async () => {
+                    showOriginal.value = !showOriginal.value;
+                    if (showOriginal.value) {
+                        // await renderOriginalFile(); // No longer needed for DOCX, PDF still uses iframe
+                    }
+                };
+
+                // 原版渲染逻辑 (仅保留 PDF iframe)
+                // const renderOriginalFile = async () => { // REMOVED
+                //     const container = originalContainer.value; // REMOVED
+                //     if (!container) return; // REMOVED
+
+                //     // 检查是否有原始文件数据 // REMOVED
+                //     if (!props.item?.rawBlob) { // REMOVED
+                //         container.innerHTML = ` // REMOVED
+                //             <div class="flex flex-col items-center justify-center py-10 text-slate-400 space-y-2"> // REMOVED
+                //                 <i class="ph ph-warning-circle text-3xl"></i> // REMOVED
+                //                 <p class="text-xs">该文档为旧版本，未存储原版数据</p> // REMOVED
+                //                 <p class="text-[10px] opacity-75">请删除后重新上传以查看原版样</p> // REMOVED
+                //             </div> // REMOVED
+                //         `; // REMOVED
+                //         return; // REMOVED
+                //     } // REMOVED
+
+                //     const file = props.item.rawBlob; // REMOVED
+                //     container.innerHTML = '<div class="py-4 text-center text-slate-400 text-xs">正在渲染原版样式...</div>'; // REMOVED
+
+                //     try { // REMOVED
+                //         if (file.name.endsWith('.docx')) { // REMOVED
+                //             // 使用 docx-preview 渲染 // REMOVED
+                //             await docx.renderAsync(file, container, null, { // REMOVED
+                //                 className: 'docx_viewer', // REMOVED
+                //                 inWrapper: true, // 开启 wrapper 以便控制样式 // REMOVED
+                //                 ignoreWidth: false, // REMOVED
+                //                 ignoreHeight: false, // REMOVED
+                //                 ignoreFonts: false, // REMOVED
+                //                 breakPages: true, // REMOVED
+                //                 ignoreLastRenderedPageBreak: true, // REMOVED
+                //                 experimental: true, // REMOVED
+                //                 trimXmlDeclaration: true, // REMOVED
+                //                 useBase64URL: false // REMOVED
+                //             }); // REMOVED
+                //         } // REMOVED
+                //         else if (file.type === 'application/pdf') { // REMOVED
+                //             // PDF 使用 iframe 预览 (Blob URL) // REMOVED
+                //             const url = URL.createObjectURL(file); // REMOVED
+                //             container.innerHTML = `<iframe src="${url}" class="w-full h-[80vh] border-none rounded-lg bg-slate-100"></iframe>`; // REMOVED
+                //         } // REMOVED
+                //         else { // REMOVED
+                //             container.innerHTML = `<div class="p-4 whitespace-pre-wrap">${await file.text()}</div>`; // REMOVED
+                //         } // REMOVED
+                //     } catch (e) { // REMOVED
+                //         console.error("Render failed", e); // REMOVED
+                //         container.innerHTML = `<div class="text-red-500 p-4">渲染失败，请切换回纯净模式。</div>`; // REMOVED
+                //     } // REMOVED
+                // }; // REMOVED
+
+                // Utils: 去除颜色样式，但保留结构类名
+                const stripStyles = (html) => {
+                    if (!html) return '';
+                    const div = document.createElement('div');
+                    div.innerHTML = html;
+                    // 只移除 style 属性（颜色/字号等），保留 class（用于换行控制）
+                    const els = div.querySelectorAll('*');
+                    els.forEach(el => {
+                        el.removeAttribute('style');
+                        // 保留 docx-p 类名，用于换行
+                        const classes = el.getAttribute('class');
+                        if (classes && !classes.includes('docx-p')) {
+                            el.removeAttribute('class');
+                        }
+                    });
+                    return div.innerHTML;
+                };
+
+                // 将纯文本转换为带换行的 HTML
+                const textToHtml = (text) => {
+                    if (!text) return '';
+                    // 转义 HTML 特殊字符
+                    const escaped = text.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+                    // 将换行符转换为 <br> 或 div，确保每行显示
+                    return escaped.split('\n').map(line => `<div class="docx-p">${line || '<br>'}</div>`).join('');
+                };
+
+                // 针对 HTML 内容的专用高亮计算
+                const highlightedHtml = computed(() => {
+                    // 1. 获取基础 HTML (优先使用 htmlContent，否则从 fullContent 生成)
+                    let baseHtml = props.item?.htmlContent || '';
+
+                    // 如果没有 htmlContent，从纯文本 fullContent 生成
+                    if (!baseHtml && props.item?.fullContent) {
+                        baseHtml = textToHtml(props.item.fullContent);
+                    }
+
+                    if (!baseHtml) return '<div class="text-slate-400 py-4">无内容可显示</div>';
+
+                    // 2. 纯净模式：去除颜色样式，但保留结构
+                    if (!showOriginal.value) {
+                        baseHtml = stripStyles(baseHtml);
+                    }
+
+                    // 3. 应用搜索高亮 (在 HTML 结构之上叠加)
+                    // 如果是片段模式，使用 getHtmlFragment 进行截取
+                    if (!isFullMode.value) {
+                        const range = config.value.detailRange || 500;
+                        return getHtmlFragment(baseHtml, props.searchKeyword, 30, range);
+                    } else {
+                        // 全文模式：只高亮不截取
+                        if (props.searchKeyword) {
+                            return getHtmlFragment(baseHtml, props.searchKeyword, 30, 0);
+                        }
+                        return baseHtml;
+                    }
+                });
+
+                const displayContent = computed(() => {
+                    // 统一逻辑：无论是全文还是片段，现在都使用 HTML 渲染
+                    // 因为手动解析器已经将 text 映射为了带结构的 p/span
+                    // 片段模式暂时直接显示全文（通过滚动定位），或者是显示带高亮的 HTML
+                    // 为了响应用户“即使在预览截取中也支持预览”的需求，最稳妥的方式是：
+                    // 既然有了 Rich HTML，就尽量展示 HTML。
+
+                    // 目前简化处理：全部使用 highlightedHtml。
+                    // DetailModal 的容器控制了 scroll，我们可以在 openDetail 时自动滚动到匹配位置。
+                    return highlightedHtml.value;
+                });
+
+                // 监听打开，自动滚动到高亮位置
+                watch(() => props.item, (val) => {
+                    if (val && !val.isFullPreview) {
+                        // 片段模式：尝试定位到第一个 <mark>
+                        nextTick(() => {
+                            const mark = scrollContainer.value?.querySelector('mark.highlight');
+                            if (mark) {
+                                mark.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                            }
+                        });
+                    }
+                });
+
+                const currentFontSize = ref(16);
+
+                return {
+                    close, isFullMode, toggleMode, toggleOriginal, showOriginal,
+                    loading, displayContent, highlightedHtml, currentFontSize,
+                    config, scrollContainer
+                };
+            }
+        };
+
+        // 6. Extractor View
+        const ExtractorView = {
+            template: '#tmpl-extractor-view',
+            setup() {
+                // 为已提取项生成颜色调色板（带透明度）
+                const colorPalette = [
+                    '#6366f1', '#8b5cf6', '#ec4899', '#ef4444', '#f59e0b',
+                    '#10b981', '#06b6d4', '#3b82f6', '#d946ef', '#f97316'
+                ];
+
+                // --- 状态持久化核心逻辑 (优化：使用 useStorage) ---
+                const storageState = useStorage('extractor_v2_data', extractorDefaultState, localStorage, { mergeDefaults: true });
+
+                // 响应式状态映射
+                const currentStep = toRef(storageState.value, 'currentStep');
+                const innerTab = toRef(storageState.value, 'innerTab');
+                const rawText = toRef(storageState.value, 'rawText');
+                const hideSpaces = toRef(storageState.value, 'hideSpaces');
+
+                // 复杂对象处理并初始化颜色稳定性
+                const extractedList = reactive((storageState.value.extractedList || [])
+                    .map((item, idx) => {
+                        const text = (item.text || '').split('\n').filter(l => l.trim()).join('\n');
+                        return {
+                            ...item,
+                            text,
+                            indices: new Set(item.indices),
+                            color: item.color || colorPalette[idx % colorPalette.length]
+                        };
+                    })
+                    .filter(item => item.text && item.text.trim() !== ''));
+
+                // 监听 extractedList 变化同步回 storage
+                watch(extractedList, (newVal) => {
+                    storageState.value.extractedList = newVal.map(item => ({
+                        ...item,
+                        indices: Array.from(item.indices)
+                    }));
+                }, { deep: true });
+
+                const charList = computed(() => (rawText.value || '').split(''));
+
+                // Set与Storage Array的同步
+                // 初始化 Set
+                const selectedIndices = ref(new Set(storageState.value.selectedIndices));
+
+                // 监听 Set 变化同步回 storage
+                watch(selectedIndices, (newSet) => {
+                    storageState.value.selectedIndices = Array.from(newSet);
+                }, { deep: true });
+
+                const editingIndex = ref(-1);
+
+                // 获取全局配置
+                const config = globalConfig;
+
+                // --- Logic: Selection ---
+                // selectedIndices 已在上方持久化逻辑中定义
+                const isDragging = ref(false);
+                const dragMode = ref(true); // true = select, false = deselect
+
+                const toggleIndex = (index, mode) => {
+                    if (mode) selectedIndices.value.add(index);
+                    else selectedIndices.value.delete(index);
+                };
+
+                const initSelection = () => {
+                    if (!rawText.value || !rawText.value.trim()) return;
+                    currentStep.value = 'work';
+                    innerTab.value = 'select';
+                };
+
+                const handleAction = () => {
+                    if (selectedIndices.value.size === 0) return;
+
+                    const indices = Array.from(selectedIndices.value).sort((a, b) => a - b);
+                    let text = indices.map(i => charList.value[i]).join('');
+                    // 保留换行，只去除空白行
+                    text = text.split('\n').filter(l => l.trim()).join('\n');
+
+                    if (!text.trim()) {
+                        showToast('无法提取空白内容', 'error');
+                        return;
+                    }
+                    const newItem = {
+                        text,
+                        indices: new Set(selectedIndices.value),
+                        color: editingIndex.value === -1
+                            ? colorPalette[extractedList.length % colorPalette.length]
+                            : extractedList[editingIndex.value].color
+                    };
+
+                    if (editingIndex.value === -1) {
+                        extractedList.unshift(newItem);
+                        showToast('已提取');
+                    } else {
+                        extractedList[editingIndex.value] = newItem;
+                        editingIndex.value = -1;
+                        showToast('已更新');
+                    }
+
+                    selectedIndices.value = new Set();
+                    // 不自动切换到列表tab，保持在选字模式
+                    // innerTab.value = 'list';
+                };
+
+                const editItem = (index) => {
+                    editingIndex.value = index;
+                    selectedIndices.value = new Set(extractedList[index].indices);
+                    innerTab.value = 'select';
+                };
+
+                const removeItem = (index) => {
+                    extractedList.splice(index, 1);
+                    if (editingIndex.value === index) {
+                        editingIndex.value = -1;
+                        selectedIndices.value = new Set();
+                    }
+                    showToast('已删除');
+                };
+
+                const { text: clipboardText, copy: copyToClipboard } = useClipboard();
+
+                // Touch Handling
+                const onGridTouchStart = (e) => {
+                    const touch = e.touches[0];
+                    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+                    const index = parseInt(el?.dataset?.index);
+
+                    if (!isNaN(index)) {
+                        isDragging.value = true;
+                        dragMode.value = !selectedIndices.value.has(index);
+                        toggleIndex(index, dragMode.value);
+                    }
+                };
+
+                const onGridTouchMove = (e) => {
+                    if (!isDragging.value) return;
+                    const touch = e.touches[0];
+                    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+                    const index = parseInt(el?.dataset?.index);
+
+                    if (!isNaN(index)) {
+                        toggleIndex(index, dragMode.value);
+                    }
+                };
+
+                const onGridTouchEnd = () => {
+                    isDragging.value = false;
+                };
+
+                const pasteFromClipboard = async () => {
+                    try {
+                        // 优先尝试直接读取
+                        if (typeof navigator !== 'undefined' && navigator.clipboard && typeof navigator.clipboard.readText === 'function') {
+                            const content = await navigator.clipboard.readText();
+                            if (content) {
+                                rawText.value = content;
+                                showToast('已从剪切板写入');
+                                return;
+                            }
+                        }
+
+                        // 如果失败，尝试使用 VueUse 缓存的内容 (需要浏览器支持并之前获取过权限)
+                        if (clipboardText.value) {
+                            rawText.value = clipboardText.value;
+                            showToast('已从剪切板写入');
+                        } else {
+                            throw new Error('Clipboard extraction failed');
+                        }
+                    } catch (err) {
+                        console.error('Failed to read clipboard:', err);
+                        showToast('环境限制(非HTTPS)，请手动粘贴', 'error');
+                    }
+                };
+
+                const copyItem = (text) => {
+                    copyToClipboard(text);
+                    showToast('已复制到剪切板');
+                };
+
+                // hideSpaces 已在上方持久化逻辑中定义
+
+                const clearSymbols = () => {
+                    // 保留汉字、字母、数字和空格，清除其他符号
+                    const oldText = rawText.value;
+                    rawText.value = rawText.value.replace(/[^\u4e00-\u9fa5a-zA-Z0-9\s]/g, '');
+                    if (oldText !== rawText.value) {
+                        selectedIndices.value = new Set();
+                        showToast('已清除符号');
+                    }
+                };
+
+                const selectAll = () => {
+                    const newSet = new Set();
+                    charList.value.forEach((char, index) => {
+                        if (!hideSpaces.value || char.trim() !== '') {
+                            newSet.add(index);
+                        }
+                    });
+                    selectedIndices.value = newSet;
+                };
+
+                const invertSelection = () => {
+                    const newSet = new Set();
+                    charList.value.forEach((char, index) => {
+                        if (!hideSpaces.value || char.trim() !== '') {
+                            if (!selectedIndices.value.has(index)) {
+                                newSet.add(index);
+                            }
+                        }
+                    });
+                    selectedIndices.value = newSet;
+                };
+
+                const clearAllResults = async () => {
+                    if (extractedList.length === 0) return;
+
+                    const ok = await showConfirm({
+                        title: '清空结果',
+                        message: '确定要清空所有的提取结果吗？',
+                        confirmText: '立即清空',
+                        type: 'danger'
+                    });
+
+                    if (ok) {
+                        extractedList.splice(0, extractedList.length);
+                        editingIndex.value = -1;
+                        selectedIndices.value = new Set();
+                        showToast('已清空所有结果');
+                    }
+                };
+
+                // 获取已提取项的颜色（优先使用项自带的颜色，实现颜色稳定性）
+                const getExtractedColor = (itemIndex) => {
+                    const item = extractedList[itemIndex];
+                    return (item && item.color) ? item.color : colorPalette[itemIndex % colorPalette.length];
+                };
+
+                // 检查字符是否在已提取列表中，返回项目索引（-1表示未提取）
+                const getExtractedItemIndex = (charIndex) => {
+                    for (let i = 0; i < extractedList.length; i++) {
+                        if (extractedList[i].indices && extractedList[i].indices.has(charIndex)) {
+                            return i;
+                        }
+                    }
+                    return -1;
+                };
+
+                // 获取已提取字符的样式（带透明度）
+                const getExtractedStyle = (charIndex) => {
+                    const itemIndex = getExtractedItemIndex(charIndex);
+                    if (itemIndex === -1) return {};
+                    const color = getExtractedColor(itemIndex);
+                    return {
+                        backgroundColor: color + '33', // 添加20%透明度
+                        borderColor: color + '66', // 边框40%透明度
+                        color: color
+                    };
+                };
+
+                return {
+                    currentStep, innerTab, rawText, charList, extractedList,
+                    selectedIndices, editingIndex, config, hideSpaces,
+                    initSelection, handleAction, editItem, removeItem, copyItem,
+                    onGridTouchStart, onGridTouchMove, onGridTouchEnd,
+                    pasteFromClipboard, clearSymbols, selectAll, invertSelection,
+                    clearAllResults, getExtractedItemIndex, getExtractedStyle, getExtractedColor
+                };
+            }
+        };
+
+        // 7. Settings Modal (Updated)
+        const SettingsModal = {
+            props: ['modelValue'],
+            template: `
+                <div v-if="modelValue" class="absolute inset-0 z-[60] flex items-center justify-center p-4">
+                    <div class="absolute inset-0 bg-black/30 backdrop-blur-sm" @click="$emit('update:modelValue', false)"></div>
+                    <div class="bg-white rounded-2xl w-full max-w-sm p-6 relative shadow-2xl space-y-6 z-10">
+                        <h3 class="text-lg font-bold text-slate-800">偏好设置</h3>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label class="text-sm font-medium text-slate-600 block mb-2">列表预览字数 (字符)</label>
+                                <input type="number" v-model.number="config.previewRange" min="10" max="1000" step="10" class="w-full bg-slate-100 rounded-xl px-3 py-2 text-sm border-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                            </div>
+                            
+                            <!-- 新增配置项 -->
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="text-sm font-medium text-slate-600 block mb-2">最小字体 (px)</label>
+                                    <input type="number" v-model.number="config.minFontSize" class="w-full bg-slate-100 rounded-xl px-3 py-2 text-sm border-none focus:ring-2 focus:ring-indigo-500">
+                                </div>
+                                <div>
+                                    <label class="text-sm font-medium text-slate-600 block mb-2">最大字体 (px)</label>
+                                    <input type="number" v-model.number="config.maxFontSize" class="w-full bg-slate-100 rounded-xl px-3 py-2 text-sm border-none focus:ring-2 focus:ring-indigo-500">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="text-sm font-medium text-slate-600 block mb-2">搜索字间距最大限制 (字符)</label>
+                                <p class="text-xs text-slate-400 mb-2">两个关键字之间的距离超过此值将不再匹配。</p>
+                                <input type="number" v-model.number="config.maxSearchGap" min="1" max="500" step="1" class="w-full bg-slate-100 rounded-xl px-3 py-2 text-sm border-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                            </div>
+
+                            <div>
+                                <label class="text-sm font-medium text-slate-600 block mb-2">详情上下文范围 (字符)</label>
+                                <input type="number" v-model.number="config.detailRange" min="100" max="5000" step="50" class="w-full bg-slate-100 rounded-xl px-3 py-2 text-sm border-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                            </div>
+
+                            <div>
+                                <label class="text-sm font-medium text-slate-600 block mb-2">选字格最小宽度 (px)</label>
+                                <input type="number" v-model.number="config.charGridWidth" min="20" max="100" step="1" class="w-full bg-slate-100 rounded-xl px-3 py-2 text-sm border-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end">
+                             <button @click="save" class="bg-indigo-600 text-white px-6 py-2 rounded-xl font-medium active:scale-95 transition-transform">保存并生效</button>
+                        </div>
+                    </div>
+                </div>
+            `,
+            setup(props, { emit }) {
+                // 直接使用全局配置，无需手动保存逻辑
+                const config = globalConfig;
+
+                const save = () => {
+                    // 因为是响应式的，数据已经更新，仅需关闭弹窗
+                    emit('update:modelValue', false);
+                    showToast('设置已保存');
+                };
+                return { config, save };
+            }
+        };
+
+
+        // --- MAIN APP ---
+        const App = {
+            components: { NavBar, TabBar, SearchView, LibraryView, ExtractorView, DetailModal, SettingsModal, ToastMessage, ConfirmModal },
+            setup() {
+                const activeTab = ref('search');
+                const showDetail = ref(false);
+                const showSettings = ref(false);
+                const detailItem = ref(null);
+                const currentSearchKeyword = ref('');
+
+                const openDetail = (item) => {
+                    detailItem.value = item;
+                    currentSearchKeyword.value = item.keyword || '';
+                    showDetail.value = true;
+                };
+
+                const openPreview = (file) => {
+                    detailItem.value = {
+                        ...file,
+                        fullContent: file.content,
+                        isFullPreview: true
+                    };
+                    currentSearchKeyword.value = '';
+                    showDetail.value = true;
+                };
+
+                return {
+                    activeTab, showDetail, showSettings, detailItem,
+                    currentSearchKeyword, openDetail, openPreview
+                };
+            }
+        };
+
+        createApp(App).mount('#app');
+
+
+        document.addEventListener('backbutton', function (e) {
+            e.preventDefault(); // 拦截原生返回
+            // 执行切换逻辑
+        }, false);
+    </script>
+</body>
+
+</html>
