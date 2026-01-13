@@ -3,7 +3,7 @@
  * 文本输入区域组件
  * Requirements: 4.1
  */
-import { TextAa, CursorClick, ClipboardText } from '@vicons/material'
+import { TextAa, CursorClick, ContentPaste } from '@vicons/material'
 
 defineProps<{
   modelValue: string
@@ -49,7 +49,7 @@ function handleInput(e: Event) {
         class="px-4 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
         title="从剪切板写入"
       >
-        <ClipboardText class="w-5 h-5" />
+        <ContentPaste class="w-5 h-5" />
         粘贴
       </button>
     </div>
