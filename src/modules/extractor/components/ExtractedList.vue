@@ -5,7 +5,7 @@
  *
  * 显示已提取的文字列表，最新的在前面
  */
-import { SelectionPlus, ContentCopy, Delete } from '@vicons/material'
+import { SelectAllOutlined, ContentCopyOutlined, DeleteOutlined } from '@vicons/material'
 import type { ExtractedItem } from '@/types'
 
 defineProps<{
@@ -26,7 +26,7 @@ const emit = defineEmits<{
       v-if="extractedList.length === 0"
       class="flex flex-col items-center justify-center h-full text-slate-400 opacity-60"
     >
-      <SelectionPlus class="w-12 h-12 mb-3" />
+      <SelectAllOutlined class="w-12 h-12 mb-3" />
       <p class="text-sm">尚未提取任何文字</p>
     </div>
 
@@ -50,14 +50,14 @@ const emit = defineEmits<{
           class="p-2 text-slate-300 hover:text-indigo-500 transition-colors"
           title="复制"
         >
-          <ContentCopy class="w-5 h-5" />
+          <ContentCopyOutlined class="w-5 h-5" />
         </button>
         <button
           @click="$emit('remove', idx)"
           class="p-2 text-slate-300 hover:text-red-500 transition-colors"
           title="删除"
         >
-          <Delete class="w-5 h-5" />
+          <DeleteOutlined class="w-5 h-5" />
         </button>
       </div>
     </div>

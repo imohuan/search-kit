@@ -3,7 +3,7 @@
  * 文本输入区域组件
  * Requirements: 4.1
  */
-import { TextAa, CursorClick, ContentPaste } from '@vicons/material'
+import { TextFieldsOutlined, TouchAppOutlined, ContentPasteOutlined } from '@vicons/material'
 
 defineProps<{
   modelValue: string
@@ -25,7 +25,7 @@ function handleInput(e: Event) {
   <div class="p-4 h-full flex flex-col space-y-2 overflow-y-auto scrollbar-hide">
     <div class="flex-1 flex flex-col gap-2">
       <label class="text-sm font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-        <TextAa class="w-4 h-4 text-indigo-500" />
+        <TextFieldsOutlined class="w-4 h-4 text-indigo-500" />
         原始文本内容
       </label>
       <textarea
@@ -41,7 +41,7 @@ function handleInput(e: Event) {
         :disabled="!modelValue || !modelValue.trim()"
         class="flex-1 py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98] shadow-lg shadow-indigo-100 flex items-center justify-center gap-2"
       >
-        <CursorClick class="w-5 h-5" />
+        <TouchAppOutlined class="w-5 h-5" />
         进入选字模式
       </button>
       <button
@@ -49,7 +49,7 @@ function handleInput(e: Event) {
         class="px-4 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
         title="从剪切板写入"
       >
-        <ContentPaste class="w-5 h-5" />
+        <ContentPasteOutlined class="w-5 h-5" />
         粘贴
       </button>
     </div>
