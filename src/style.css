@@ -1,1 +1,277 @@
 @import "tailwindcss";
+
+/**
+ * 全局自定义样式
+ * 从参考.html迁移的样式
+ * Requirements: 1.4
+ */
+
+/* ============================================
+   基础样式
+   ============================================ */
+
+body {
+  background-color: #f8fafc; /* slate-50 */
+  color: #1e293b; /* slate-800 */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ============================================
+   滚动条样式
+   ============================================ */
+
+/* 隐藏滚动条但保留功能 */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* 自定义滚动条样式 */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f1f5f9; /* slate-100 */
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1; /* slate-300 */
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8; /* slate-400 */
+}
+
+/* ============================================
+   高亮样式
+   ============================================ */
+
+mark.highlight {
+  background-color: #fef08a; /* yellow-200 */
+  color: #854d0e; /* yellow-800 */
+  padding: 0 2px;
+  border-radius: 2px;
+  font-weight: 600;
+  border-bottom: 2px solid #eab308; /* yellow-500 */
+}
+
+/* ============================================
+   Vue 过渡动画
+   ============================================ */
+
+/* 淡入淡出 */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+/* 从底部滑入 */
+.slide-up-enter-active,
+.slide-up-leave-active {
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.slide-up-enter-from,
+.slide-up-leave-to {
+  transform: translateY(100%);
+}
+
+/* 从右侧滑入 */
+.slide-right-enter-active,
+.slide-right-leave-active {
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.slide-right-enter-from {
+  transform: translateX(100%);
+}
+
+.slide-right-leave-to {
+  transform: translateX(100%);
+}
+
+/* ============================================
+   DOCX 渲染样式修复
+   ============================================ */
+
+/* 修复 docx-preview 原版渲染样式冲突 */
+.docx-wrapper {
+  background: transparent !important;
+  padding: 0 !important;
+}
+
+.docx-wrapper > section.docx {
+  background: white !important;
+  box-shadow: none !important;
+  margin-bottom: 0 !important;
+  padding: 20px !important;
+  min-height: auto !important;
+}
+
+/* 强制 docx 段落块级显示 */
+.docx-p {
+  display: block !important;
+  min-height: 1.5em;
+  margin-bottom: 0.8em;
+  line-height: 1.6;
+  word-wrap: break-word;
+}
+
+/* Docx 换行标签强制换行 */
+.docx-br {
+  display: block;
+  content: "";
+  margin-bottom: 0.3em;
+}
+
+/* ============================================
+   纯文本样式
+   ============================================ */
+
+.plain-text-content {
+  white-space: pre-line;
+  word-wrap: break-word;
+}
+
+/* ============================================
+   文档富文本预览样式 (Prose)
+   ============================================ */
+
+.doc-content-render {
+  color: #334155; /* slate-700 */
+  line-height: 1.8;
+  word-break: break-word;
+}
+
+.doc-content-render p {
+  margin-bottom: 1em;
+}
+
+.doc-content-render h1 {
+  font-size: 1.5em;
+  font-weight: 800;
+  margin: 1.2em 0 0.6em;
+  color: #1e293b; /* slate-800 */
+}
+
+.doc-content-render h2 {
+  font-size: 1.3em;
+  font-weight: 700;
+  margin: 1em 0 0.5em;
+  color: #1e293b; /* slate-800 */
+}
+
+.doc-content-render h3 {
+  font-size: 1.1em;
+  font-weight: 700;
+  margin: 0.8em 0 0.4em;
+}
+
+.doc-content-render strong {
+  color: #0f172a; /* slate-900 */
+  font-weight: 700;
+}
+
+.doc-content-render table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1em 0;
+  font-size: 0.9em;
+}
+
+.doc-content-render th,
+.doc-content-render td {
+  border: 1px solid #e2e8f0; /* slate-200 */
+  padding: 0.5em;
+  text-align: left;
+}
+
+.doc-content-render th {
+  background-color: #f8fafc; /* slate-50 */
+  font-weight: 600;
+}
+
+.doc-content-render ul {
+  list-style-type: disc;
+  padding-left: 1.5em;
+  margin-bottom: 1em;
+}
+
+.doc-content-render ol {
+  list-style-type: decimal;
+  padding-left: 1.5em;
+  margin-bottom: 1em;
+}
+
+/* ============================================
+   移动端优化
+   ============================================ */
+
+/* 禁用移动端双击缩放 */
+* {
+  touch-action: manipulation;
+}
+
+/* 优化触摸响应 */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* 防止文本选择干扰触摸操作 */
+.no-select {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* ============================================
+   字符网格优化样式
+   ============================================ */
+
+/* 字符网格容器 - 优化触摸性能 */
+.char-grid {
+  touch-action: none; /* 禁用浏览器默认触摸行为 */
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* 字符单元格 - 优化渲染性能 */
+.char-cell {
+  will-change: background-color, border-color;
+  contain: layout style;
+}
+
+/* ============================================
+   应用容器样式
+   ============================================ */
+
+/* 主应用容器 */
+.app-container {
+  max-width: 28rem; /* max-w-md */
+  margin: 0 auto;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #f8fafc; /* slate-50 */
+  position: relative;
+  overflow: hidden;
+}
+
+/* 桌面端阴影效果 */
+@media (min-width: 768px) {
+  .app-container {
+    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25); /* shadow-2xl */
+  }
+}

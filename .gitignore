@@ -7,6 +7,16 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+
+.kiro/settings.json    # 可能包含 API 密钥
+.kiro/cache/           # 缓存文件
+*.log                  # 日志文件
+
+# 但以下内容应该提交：
+.kiro/steering/        # 项目知识共享
+.kiro/hooks/           # Hook 配置共享
+.kiro/specs/           # 规格说明共享
+
 node_modules
 dist
 dist-ssr
