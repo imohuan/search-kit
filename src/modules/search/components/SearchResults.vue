@@ -3,9 +3,11 @@
  * 搜索结果列表组件
  * Requirements: 2.4
  */
+import { ref } from 'vue'
 import type { SearchResult } from '@/types'
 import ResultCard from './ResultCard.vue'
-import { SearchOffFilled, SentimentDissatisfiedOutlined } from '@vicons/material'
+import DisplayOptionsMenu, { type DisplayOptions } from './DisplayOptionsMenu.vue'
+import { SearchOffFilled, SentimentDissatisfiedOutlined, TuneOutlined } from '@vicons/material'
 
 defineProps<{
   results: SearchResult[]
@@ -17,6 +19,24 @@ defineProps<{
 const emit = defineEmits<{
   'result-click': [result: SearchResult]
 }>()
+
+// 显示选项弹窗状态
+const showOptionsMenu = ref(false)
+
+// 显示选项状态
+const displayOptions = ref<DisplayOptions>({
+  showTitle: true,
+  showSpan: true,
+  showPosition: true,
+  showDetail: true,
+  compact: false
+})
+
+// 检查是否有选项被关闭（用于高亮按钮）
+function hasCustomOptions(): boolean {
+  const opts = displayOptions.value
+  return !opts.showTitle || !opts.showSpan || !opts.showPosition || !opts.showDetail || opts.compact
+}
 </script>
 
 <template>
@@ -42,15 +62,25 @@ const emit = defineEmits<{
 
     <!-- 结果列表 -->
     <div v-else class="results-list">
-      <!-- 结果数量 -->
-      <div class="result-count">
-        找到 <span class="font-medium text-blue-600">{{ results.length }}</span> 条结果
+      <!-- 结果数量和显示选项 -->
+      <div class="result-header">
+        <div class="result-count">
+          找到 <span class="font-medium text-blue-600">{{ results.length }}</span> 条结果
+        </div>
+        <button @click="showOptionsMenu = true" class="p-1.5 rounded-lg transition-colors"
+          :class="hasCustomOptions() ? 'text-indigo-600' : 'text-slate-400 hover:text-indigo-500'" title="显示选项">
+          <TuneOutlined class="w-5 h-5" />
+        </button>
       </div>
 
       <!-- 结果卡片 -->
       <ResultCard v-for="(result, index) in results" :key="`${result.id}-${result.matchIndex}-${index}`"
-        :result="result" :font-size="fontSize" @click="emit('result-click', result)" />
+        :result="result" :font-size="fontSize" :display-options="displayOptions"
+        @click="emit('result-click', result)" />
     </div>
+
+    <!-- 显示选项弹窗 -->
+    <DisplayOptionsMenu v-model:visible="showOptionsMenu" v-model:options="displayOptions" />
   </div>
 </template>
 
@@ -77,7 +107,11 @@ const emit = defineEmits<{
   @apply flex flex-col gap-3 p-4;
 }
 
+.result-header {
+  @apply flex items-center justify-between mb-1;
+}
+
 .result-count {
-  @apply text-sm text-gray-500 mb-1;
+  @apply text-sm text-gray-500;
 }
 </style>

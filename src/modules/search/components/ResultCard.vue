@@ -5,11 +5,21 @@
  */
 import { DescriptionOutlined } from '@vicons/material'
 import type { SearchResult } from '@/types'
+import type { DisplayOptions } from './DisplayOptionsMenu.vue'
 
-const props = defineProps<{
+withDefaults(defineProps<{
   result: SearchResult
   fontSize?: number
-}>()
+  displayOptions?: DisplayOptions
+}>(), {
+  displayOptions: () => ({
+    showTitle: true,
+    showSpan: true,
+    showPosition: true,
+    showDetail: true,
+    compact: false
+  })
+})
 
 const emit = defineEmits<{
   click: [result: SearchResult]
@@ -18,29 +28,39 @@ const emit = defineEmits<{
 
 <template>
   <div
-    class="bg-white rounded-xl p-4 border border-slate-100 shadow-sm active:scale-[0.99] active:bg-slate-50 transition-all cursor-pointer"
-    @click="emit('click', result)">
+    class="bg-white rounded-xl border border-slate-100 shadow-sm active:scale-[0.99] active:bg-slate-50 transition-all cursor-pointer"
+    :class="displayOptions.compact ? 'p-2' : 'p-4'" @click="emit('click', result)">
     <!-- 文件名和匹配跨度 badge -->
-    <div class="flex items-center gap-2 mb-2">
-      <DescriptionOutlined class="w-5 h-5 text-indigo-500 shrink-0" />
-      <h3 class="font-bold text-slate-700 text-sm truncate flex-1">
-        {{ result.fileName }}
-      </h3>
+    <div v-if="displayOptions.showTitle || displayOptions.showSpan" class="flex items-center gap-2"
+      :class="displayOptions.compact ? 'mb-1' : 'mb-2'">
+      <template v-if="displayOptions.showTitle">
+        <DescriptionOutlined class="text-indigo-500 shrink-0" :class="displayOptions.compact ? 'w-4 h-4' : 'w-5 h-5'" />
+        <h3 class="font-bold text-slate-700 truncate flex-1" :class="displayOptions.compact ? 'text-xs' : 'text-sm'">
+          {{ result.fileName }}
+        </h3>
+      </template>
+      <div v-else class="flex-1" />
       <!-- 匹配跨度 badge -->
-      <span class="text-[10px] text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded shrink-0">
+      <span v-if="displayOptions.showSpan" class="text-indigo-600 bg-indigo-50 rounded shrink-0"
+        :class="displayOptions.compact ? 'text-[9px] px-1 py-0.5' : 'text-[10px] px-1.5 py-0.5'">
         跨度 {{ result.matchLength }} 字
       </span>
     </div>
 
     <!-- 高亮片段 -->
     <div
-      class="text-slate-600 leading-relaxed bg-slate-50/50 p-3 rounded-lg border border-slate-50 transition-all doc-content-render"
-      :style="{ fontSize: `${fontSize || 14}px`, lineHeight: '1.6' }" v-html="result.highlightedSnippet" />
+      class="text-slate-600 leading-relaxed bg-slate-50/50 rounded-lg border border-slate-50 transition-all doc-content-render"
+      :class="displayOptions.compact ? 'p-2' : 'p-3'"
+      :style="{ fontSize: displayOptions.compact ? '12px' : `${fontSize || 14}px`, lineHeight: displayOptions.compact ? '1.4' : '1.6' }"
+      v-html="result.highlightedSnippet" />
 
     <!-- 底部信息 -->
-    <div class="mt-2 flex justify-between items-center text-xs text-slate-400">
-      <span>位置: {{ result.matchIndex }}</span>
-      <span class="text-indigo-600 font-medium flex items-center gap-1">
+    <div v-if="displayOptions.showPosition || displayOptions.showDetail"
+      class="flex justify-between items-center text-slate-400"
+      :class="displayOptions.compact ? 'mt-1 text-[10px]' : 'mt-2 text-xs'">
+      <span v-if="displayOptions.showPosition">位置: {{ result.matchIndex }}</span>
+      <span v-else />
+      <span v-if="displayOptions.showDetail" class="text-indigo-600 font-medium flex items-center gap-1">
         查看详情
       </span>
     </div>
