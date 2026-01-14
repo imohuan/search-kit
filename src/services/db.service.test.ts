@@ -10,7 +10,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fc from "fast-check";
 import "fake-indexeddb/auto";
 import { dbService } from "./db.service";
-import type { Document } from "@/types";
+// import type { Document } from "@/types";
 
 describe("DBService - Property 8: Document Persistence Round-Trip", () => {
   beforeEach(async () => {

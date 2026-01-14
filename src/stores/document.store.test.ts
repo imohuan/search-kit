@@ -10,7 +10,7 @@ import fc from "fast-check";
 import "fake-indexeddb/auto";
 import { useDocumentStore } from "./document.store";
 import { dbService } from "@/services/db.service";
-import type { Document } from "@/types";
+// import type { Document } from "@/types";
 
 describe("Document Store - Property Tests", () => {
   beforeEach(async () => {

@@ -141,6 +141,7 @@ describe("SearchService - Property 3: Search Results Sorting", () => {
     content: fc.string({ minLength: 1, maxLength: 200 }),
     matchIndex: fc.integer({ min: 0, max: 100 }),
     matchLength: fc.integer({ min: 1, max: 100 }),
+    matchPositions: fc.array(fc.integer({ min: 0, max: 100 }), { minLength: 1, maxLength: 10 }),
     highlightedSnippet: fc.string({ minLength: 1, maxLength: 200 }),
   });
 
