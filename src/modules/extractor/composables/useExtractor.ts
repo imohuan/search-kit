@@ -4,7 +4,7 @@
  *
  * 功能:
  * - 字符列表生成（连续数字字母合并）
- * - 触摸选择逻辑（优化卡顿）
+ * - 触摸/鼠标选择逻辑（优化版）
  * - 提取、编辑、删除操作
  * - 列表顺序反转（最新在前）
  */
@@ -14,6 +14,7 @@ import { useClipboard } from "@vueuse/core";
 import { useExtractorStore } from "@/stores/extractor.store";
 import { useToast } from "@/composables/useToast";
 import { useConfirm } from "@/composables/useConfirm";
+import { useGridSelection } from "@/composables/useGridSelection";
 import type { CharCell, ExtractedItem } from "@/types";
 
 /**
@@ -107,12 +108,13 @@ export function useExtractor() {
   // 编辑中的项目索引，-1表示新建模式
   const editingIndex = ref(-1);
 
-  // 拖拽状态
-  const isDragging = ref(false);
-  const dragMode = ref(true); // true = 选择, false = 取消选择
-
-  // 上一次触摸的索引，用于优化触摸性能
-  const lastTouchedIndex = ref<number | null>(null);
+  // 使用优化的网格选择手势
+  const { isDragging, bindEvents: bindGridEvents, unbindEvents: unbindGridEvents } = useGridSelection({
+    selectedIndices: computed(() => store.selectedIndicesSet),
+    addIndex: (index) => store.addSelectedIndex(index),
+    removeIndex: (index) => store.removeSelectedIndex(index),
+    setIndices: (indices) => store.setSelectedIndices(indices),
+  });
 
   // 字符列表（带连续数字字母合并）
   const charList = computed<CharCell[]>(() => {
@@ -248,80 +250,19 @@ export function useExtractor() {
   }
 
   /**
-   * 触摸开始处理
-   * Requirements: 4.3 - 优化触摸性能
+   * 绑定网格选择事件
+   * 在 CharGrid 组件挂载时调用
    */
-  function onGridTouchStart(e: TouchEvent): void {
-    const touch = e.touches[0];
-    if (!touch) return;
-
-    const el = document.elementFromPoint(touch.clientX, touch.clientY) as HTMLElement | null;
-    const indexStr = el?.dataset?.index;
-
-    if (indexStr !== undefined) {
-      const index = parseInt(indexStr, 10);
-      if (!isNaN(index)) {
-        isDragging.value = true;
-        // 根据当前状态决定是选择还是取消选择
-        dragMode.value = !store.selectedIndicesSet.has(index);
-
-        // 处理组合字符
-        const isGrouped = el?.dataset?.grouped === "true";
-        const groupLength = parseInt(el?.dataset?.groupLength || "1", 10);
-
-        if (isGrouped && groupLength > 1) {
-          // 选中组合字符的所有索引
-          for (let i = 0; i < groupLength; i++) {
-            toggleIndex(index + i, dragMode.value);
-          }
-        } else {
-          toggleIndex(index, dragMode.value);
-        }
-        lastTouchedIndex.value = index;
-      }
-    }
+  function bindGridSelectionEvents(container: HTMLElement): void {
+    bindGridEvents(container);
   }
 
   /**
-   * 触摸移动处理
-   * Requirements: 4.3 - 优化触摸性能，避免重复处理同一索引
+   * 解绑网格选择事件
+   * 在 CharGrid 组件卸载时调用
    */
-  function onGridTouchMove(e: TouchEvent): void {
-    if (!isDragging.value) return;
-
-    const touch = e.touches[0];
-    if (!touch) return;
-
-    const el = document.elementFromPoint(touch.clientX, touch.clientY) as HTMLElement | null;
-    const indexStr = el?.dataset?.index;
-
-    if (indexStr !== undefined) {
-      const index = parseInt(indexStr, 10);
-      // 只有当索引变化时才处理，避免重复操作导致卡顿
-      if (!isNaN(index) && index !== lastTouchedIndex.value) {
-        // 处理组合字符
-        const isGrouped = el?.dataset?.grouped === "true";
-        const groupLength = parseInt(el?.dataset?.groupLength || "1", 10);
-
-        if (isGrouped && groupLength > 1) {
-          // 选中组合字符的所有索引
-          for (let i = 0; i < groupLength; i++) {
-            toggleIndex(index + i, dragMode.value);
-          }
-        } else {
-          toggleIndex(index, dragMode.value);
-        }
-        lastTouchedIndex.value = index;
-      }
-    }
-  }
-
-  /**
-   * 触摸结束处理
-   */
-  function onGridTouchEnd(): void {
-    isDragging.value = false;
-    lastTouchedIndex.value = null;
+  function unbindGridSelectionEvents(): void {
+    unbindGridEvents();
   }
 
   /**
@@ -351,12 +292,17 @@ export function useExtractor() {
 
   /**
    * 清除符号（保留汉字、字母、数字和空格）
+   * 清除后需要同时清空选中索引和提取列表，因为索引会失效
    */
   function clearSymbols(): void {
     const oldText = store.rawText;
-    store.rawText = store.rawText.replace(/[^\u4e00-\u9fa5a-zA-Z0-9\s]/g, "");
-    if (oldText !== store.rawText) {
+    const newText = store.rawText.replace(/[^\u4e00-\u9fa5a-zA-Z0-9\s]/g, "");
+    if (oldText !== newText) {
+      store.rawText = newText;
+      // 清除符号后索引会失效，需要清空选中和提取列表
       store.clearSelectedIndices();
+      store.clearExtractedList();
+      editingIndex.value = -1;
       showToast("已清除符号");
     }
   }
@@ -517,9 +463,8 @@ export function useExtractor() {
     toggleCell,
     isCellSelected,
     isCellPartiallySelected,
-    onGridTouchStart,
-    onGridTouchMove,
-    onGridTouchEnd,
+    bindGridSelectionEvents,
+    unbindGridSelectionEvents,
     pasteFromClipboard,
     clearSymbols,
     selectAll,

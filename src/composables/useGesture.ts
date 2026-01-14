@@ -28,6 +28,7 @@ export function useGesture(elementRef: Ref<HTMLElement | null>, options: Gesture
    */
   function handleTouchStart(e: TouchEvent) {
     const touch = e.touches[0];
+    if (!touch) return;
     startX = touch.clientX;
     startY = touch.clientY;
     isTracking = true;
@@ -43,6 +44,7 @@ export function useGesture(elementRef: Ref<HTMLElement | null>, options: Gesture
     if (!isTracking) return;
 
     const touch = e.touches[0];
+    if (!touch) return;
     const deltaX = touch.clientX - startX;
     const deltaY = touch.clientY - startY;
 

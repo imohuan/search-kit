@@ -7,8 +7,9 @@
  * - 显示字符网格，支持连续数字字母合并显示
  * - 使用 CSS 变量优化性能，避免重复计算样式
  * - 支持三种预览模式：full（完整）、simple（简洁）、off（关闭）
+ * - 支持触摸和鼠标选择（通过外部绑定事件）
  */
-import { computed } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useAppStore } from '@/stores/app.store'
 import type { CharCell } from '@/types'
 
@@ -18,13 +19,28 @@ const props = defineProps<{
   hideSpaces: boolean
   previewMode: 'full' | 'simple' | 'off'
   extractedList: Array<{ indices: number[]; color: string }>
+  /** 绑定选择事件的函数 */
+  bindSelectionEvents?: (container: HTMLElement) => void
+  /** 解绑选择事件的函数 */
+  unbindSelectionEvents?: () => void
 }>()
 
-defineEmits<{
-  'touchstart': [e: TouchEvent]
-  'touchmove': [e: TouchEvent]
-  'touchend': []
-}>()
+// 网格容器引用
+const gridRef = ref<HTMLElement | null>(null)
+
+// 组件挂载时绑定事件
+onMounted(() => {
+  if (gridRef.value && props.bindSelectionEvents) {
+    props.bindSelectionEvents(gridRef.value)
+  }
+})
+
+// 组件卸载时解绑事件
+onUnmounted(() => {
+  if (props.unbindSelectionEvents) {
+    props.unbindSelectionEvents()
+  }
+})
 
 const appStore = useAppStore()
 
@@ -144,9 +160,8 @@ function getCellClass(cell: CharCell): string[] {
 </script>
 
 <template>
-  <div class="h-full overflow-y-auto p-3 bg-white scrollbar-hide char-grid" :style="cssVariables">
-    <div class="leading-relaxed select-none pb-24" @touchstart.passive="$emit('touchstart', $event)"
-      @touchmove.prevent="$emit('touchmove', $event)" @touchend.passive="$emit('touchend')">
+  <div ref="gridRef" class="h-full overflow-y-auto p-3 bg-white scrollbar-hide char-grid" :style="cssVariables">
+    <div class="leading-relaxed select-none pb-24">
       <template v-for="(cell, idx) in charList" :key="idx">
         <!-- 换行符 -->
         <br v-if="isNewline(cell)" />
@@ -160,15 +175,19 @@ function getCellClass(cell: CharCell): string[] {
           :data-group-length="cell.isGrouped && cell.groupText ? cell.groupText.length : undefined"
           class="char-cell inline-flex items-center justify-center rounded font-medium cursor-pointer select-none border m-0.5 align-middle relative"
           :class="getCellClass(cell)" :style="{
-            width: cell.isGrouped && cell.groupText
-              ? `${cellSize * Math.min(cell.groupText.length, 2.5)}px`
+            minWidth: `${cellSize}px`,
+            maxWidth: cell.isGrouped && cell.groupText
+              ? `${cellSize * Math.max(cell.groupText.length, 1)}px`
               : `${cellSize}px`,
+            width: 'auto',
+            paddingLeft: cell.isGrouped ? '4px' : '0',
+            paddingRight: cell.isGrouped ? '4px' : '0',
             height: `${cellSize}px`,
             fontSize: '13px'
           }">
-          {{ getDisplayText(cell) }}
+          <span class="truncate max-w-full">{{ getDisplayText(cell) }}</span>
 
-          <!-- 序号标注 - 仅完整模式 -->
+          <!-- 序号标注 - 仅完整模式，使用独立定位避免被截断 -->
           <span v-if="previewMode === 'full' && !isCellSelected(cell) && getExtractedIndex(cell.index) !== -1"
             class="extracted-badge" :class="`badge-${getExtractedIndex(cell.index)}`">
             {{ extractedList.length - getExtractedIndex(cell.index) }}

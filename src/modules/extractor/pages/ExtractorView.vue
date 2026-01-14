@@ -27,9 +27,8 @@ const {
   editItem,
   removeItem,
   copyItem,
-  onGridTouchStart,
-  onGridTouchMove,
-  onGridTouchEnd,
+  bindGridSelectionEvents,
+  unbindGridSelectionEvents,
   clearSymbols,
   selectAll,
   invertSelection,
@@ -99,7 +98,7 @@ const extractedListForGrid = computed(() => {
         <!-- 选字面板 -->
         <CharGrid v-show="innerTab === 'select'" :char-list="charList" :selected-indices="selectedIndices"
           :hide-spaces="hideSpaces" :preview-mode="previewMode" :extracted-list="extractedListForGrid"
-          @touchstart="onGridTouchStart" @touchmove="onGridTouchMove" @touchend="onGridTouchEnd" />
+          :bind-selection-events="bindGridSelectionEvents" :unbind-selection-events="unbindGridSelectionEvents" />
 
         <!-- 结果面板 -->
         <ExtractedList v-show="innerTab === 'list'" :extracted-list="extractedList" @edit="editItem" @copy="copyItem"

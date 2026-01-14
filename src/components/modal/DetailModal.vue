@@ -9,6 +9,7 @@ import { useStorage } from '@vueuse/core'
 import { useAppStore } from '@/stores/app.store'
 import { useDocumentStore } from '@/stores/document.store'
 import { useGesture } from '@/composables/useGesture'
+import { usePinchZoom } from '@/composables/usePinchZoom'
 import type { SearchResult, Document } from '@/types'
 import {
   KeyboardArrowDownOutlined,
@@ -49,6 +50,49 @@ const modalContainer = ref<HTMLElement | null>(null)
 
 // 字体大小（持久化）
 const currentFontSize = useStorage('detail-font-size', 16)
+
+// 集成双指缩放手势
+const { setScale: setPinchScale } = usePinchZoom(scrollContainer, {
+  minScale: appStore.config.minFontSize,
+  maxScale: appStore.config.maxFontSize,
+  step: 2,
+  onZoom: (scale) => {
+    setFontSizeWithScroll(scale)
+  }
+})
+
+// 同步字体大小到双指缩放
+watch(currentFontSize, (newSize) => {
+  setPinchScale(newSize)
+}, { immediate: true })
+
+/**
+ * 设置字体大小并保持滚动位置
+ * 核心思路：字体变化后，scrollTop 按照字体比例缩放
+ */
+function setFontSizeWithScroll(newSize: number) {
+  const container = scrollContainer.value
+
+  if (!container) {
+    currentFontSize.value = newSize
+    return
+  }
+
+  const oldFontSize = currentFontSize.value
+  const oldScrollTop = container.scrollTop
+
+  // 计算字体缩放比例
+  const fontRatio = newSize / oldFontSize
+
+  // 更新字体大小
+  currentFontSize.value = newSize
+
+  // 按字体比例调整滚动位置
+  // 字体变大，内容变高，需要滚动更多；字体变小，内容变矮，需要滚动更少
+  requestAnimationFrame(() => {
+    container.scrollTop = oldScrollTop * fontRatio
+  })
+}
 
 // 获取当前文档
 const currentDocument = computed<Document | null>(() => {
@@ -502,9 +546,10 @@ const swipeStyle = computed(() => {
             <!-- 字体大小滑块 -->
             <div class="h-8 flex items-center gap-1.5 bg-slate-50 px-2 rounded-full border border-slate-100">
               <TextFieldsOutlined class="w-4 h-4 text-slate-400" />
-              <input type="range" v-model.number="currentFontSize" :min="appStore.config.minFontSize"
+              <input type="range" :value="currentFontSize" :min="appStore.config.minFontSize"
                 :max="appStore.config.maxFontSize"
-                class="w-16 h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer" />
+                class="w-16 h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                @input="setFontSizeWithScroll(Number(($event.target as HTMLInputElement).value))" />
               <TextFieldsOutlined class="w-5 h-5 text-slate-500" />
             </div>
 
