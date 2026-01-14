@@ -77,7 +77,7 @@ const {
  */
 function handleResultClick(result: SearchResult) {
   detailStore.setDetail(result, query.value, isExact.value, '/search')
-  router.push({ name: 'detail', params: { id: result.id } })
+  router.push({ name: 'detail', params: { id: result.id }, query: { from: 'search' } })
 }
 
 /**

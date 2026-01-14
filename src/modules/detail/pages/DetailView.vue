@@ -4,7 +4,7 @@
  * 显示文档详细内容，支持全文/片段模式切换、关键词高亮
  */
 import { ref, computed, watch, nextTick, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useStorage } from '@vueuse/core'
 import { useAppStore } from '@/stores/app.store'
 import { useDocumentStore } from '@/stores/document.store'
@@ -19,6 +19,7 @@ import {
 } from '@vicons/material'
 
 const router = useRouter()
+const route = useRoute()
 const appStore = useAppStore()
 const documentStore = useDocumentStore()
 const detailStore = useDetailStore()
@@ -27,6 +28,10 @@ const detailStore = useDetailStore()
 const isFullMode = ref(false)
 const loading = ref(false)
 const scrollContainer = ref<HTMLElement | null>(null)
+
+// 是否显示全文/片段切换按钮（从文档库进入时隐藏，默认全文模式）
+const isFromLibrary = computed(() => route.query.from === 'library')
+const showModeToggle = computed(() => !isFromLibrary.value)
 
 // 用于标记当前匹配的唯一ID
 const currentMatchId = 'current-match-highlight'
@@ -181,6 +186,10 @@ onMounted(() => {
     router.replace(detailStore.fromRoute || '/search')
     return
   }
+  // 从文档库进入时默认全文模式
+  if (isFromLibrary.value) {
+    isFullMode.value = true
+  }
   nextTick(() => scrollToHighlight())
 })
 </script>
@@ -210,8 +219,8 @@ onMounted(() => {
           <TextFieldsOutlined class="w-5 h-5 text-slate-500" />
         </div>
 
-        <!-- 全文/片段模式切换 -->
-        <button @click="isFullMode = !isFullMode"
+        <!-- 全文/片段模式切换（从搜索列表进入时显示） -->
+        <button v-if="showModeToggle" @click="isFullMode = !isFullMode"
           class="h-8 px-3 flex items-center gap-1.5 rounded-full border transition-all"
           :class="isFullMode
             ? 'bg-indigo-50 text-indigo-600 border-indigo-100'

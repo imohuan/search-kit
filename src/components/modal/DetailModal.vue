@@ -56,7 +56,6 @@ const currentFontSize = useStorage('detail-font-size', 16)
 const { setScale: setPinchScale } = usePinchZoom(scrollContainer, {
   minScale: appStore.config.minFontSize,
   maxScale: appStore.config.maxFontSize,
-  step: 2,
   onZoom: (scale) => {
     setFontSizeWithScroll(scale)
   }

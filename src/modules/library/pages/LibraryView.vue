@@ -45,7 +45,7 @@ function handleDocumentClick(doc: Document) {
     highlightedSnippet: ''
   }
   detailStore.setDetail(result, '', false, '/library')
-  router.push({ name: 'detail', params: { id: doc.id } })
+  router.push({ name: 'detail', params: { id: doc.id }, query: { from: 'library' } })
 }
 
 /**
