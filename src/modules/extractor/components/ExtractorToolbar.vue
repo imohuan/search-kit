@@ -24,6 +24,7 @@ import {
 defineProps<{
   innerTab: 'select' | 'list'
   previewMode: 'full' | 'simple' | 'off'
+  symbolsCleared: boolean
   selectedCount: number
   extractedCount: number
   editingIndex: number
@@ -32,7 +33,7 @@ defineProps<{
 defineEmits<{
   'back': []
   'set-preview-mode': [mode: 'full' | 'simple' | 'off']
-  'clear-symbols': []
+  'toggle-symbols-cleared': []
   'select-all': []
   'invert-selection': []
   'clear-selection': []
@@ -80,10 +81,11 @@ defineEmits<{
 
       <div class="w-px h-4 bg-slate-200 mx-0.5" />
 
-      <!-- 清除符号 -->
-      <button @click="$emit('clear-symbols')"
-        class="w-8 h-8 flex items-center justify-center text-slate-400 active:text-indigo-600 active:bg-slate-200 rounded-lg transition-all"
-        title="快速清除符号">
+      <!-- 清除符号切换 -->
+      <button @click="$emit('toggle-symbols-cleared')" :class="[
+        'w-8 h-8 flex items-center justify-center rounded-lg transition-all',
+        symbolsCleared ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'
+      ]" :title="symbolsCleared ? '符号过滤已开启' : '符号过滤已关闭'">
         <CleaningServicesOutlined class="w-5 h-5" />
       </button>
 

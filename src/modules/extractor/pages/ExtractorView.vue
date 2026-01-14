@@ -18,6 +18,7 @@ const {
   rawText,
   hideSpaces,
   previewMode,
+  symbolsCleared,
   charList,
   extractedList,
   selectedIndices,
@@ -29,7 +30,7 @@ const {
   copyItem,
   bindGridSelectionEvents,
   unbindGridSelectionEvents,
-  clearSymbols,
+  toggleSymbolsCleared,
   selectAll,
   invertSelection,
   clearAllResults,
@@ -97,8 +98,9 @@ const extractedListForGrid = computed(() => {
       <div class="flex-1 overflow-hidden relative">
         <!-- 选字面板 -->
         <CharGrid v-show="innerTab === 'select'" :char-list="charList" :selected-indices="selectedIndices"
-          :hide-spaces="hideSpaces" :preview-mode="previewMode" :extracted-list="extractedListForGrid"
-          :bind-selection-events="bindGridSelectionEvents" :unbind-selection-events="unbindGridSelectionEvents" />
+          :hide-spaces="hideSpaces" :filter-symbols="symbolsCleared" :preview-mode="previewMode"
+          :extracted-list="extractedListForGrid" :bind-selection-events="bindGridSelectionEvents"
+          :unbind-selection-events="unbindGridSelectionEvents" />
 
         <!-- 结果面板 -->
         <ExtractedList v-show="innerTab === 'list'" :extracted-list="extractedList" @edit="editItem" @copy="copyItem"
@@ -106,11 +108,11 @@ const extractedListForGrid = computed(() => {
       </div>
 
       <!-- 底部工具栏 -->
-      <ExtractorToolbar :inner-tab="innerTab" :preview-mode="previewMode" :selected-count="selectedCount"
-        :extracted-count="extractedCount" :editing-index="editingIndex" @back="backToInput"
-        @set-preview-mode="setPreviewMode" @clear-symbols="clearSymbols" @select-all="selectAll"
-        @invert-selection="invertSelection" @clear-selection="clearSelection" @extract="handleAction"
-        @clear-all-results="clearAllResults" />
+      <ExtractorToolbar :inner-tab="innerTab" :preview-mode="previewMode" :symbols-cleared="symbolsCleared"
+        :selected-count="selectedCount" :extracted-count="extractedCount" :editing-index="editingIndex"
+        @back="backToInput" @set-preview-mode="setPreviewMode" @toggle-symbols-cleared="toggleSymbolsCleared"
+        @select-all="selectAll" @invert-selection="invertSelection" @clear-selection="clearSelection"
+        @extract="handleAction" @clear-all-results="clearAllResults" />
     </div>
   </div>
 </template>

@@ -35,6 +35,7 @@ const defaultState: ExtractorState = {
   selectedIndices: [],
   hideSpaces: false,
   previewMode: "full",
+  symbolsCleared: false,
 };
 
 /**
@@ -84,6 +85,14 @@ export const useExtractorStore = defineStore("extractor", () => {
     get: () => storageState.value.previewMode ?? "full",
     set: (val) => {
       storageState.value.previewMode = val;
+    },
+  });
+
+  // 符号是否已清除
+  const symbolsCleared = computed({
+    get: () => storageState.value.symbolsCleared ?? false,
+    set: (val) => {
+      storageState.value.symbolsCleared = val;
     },
   });
 
@@ -204,6 +213,7 @@ export const useExtractorStore = defineStore("extractor", () => {
   function resetToInput(): void {
     currentStep.value = "input";
     innerTab.value = "select";
+    symbolsCleared.value = false;
   }
 
   /**
@@ -230,6 +240,7 @@ export const useExtractorStore = defineStore("extractor", () => {
     rawText,
     hideSpaces,
     previewMode,
+    symbolsCleared,
     extractedList,
     selectedIndicesSet,
 

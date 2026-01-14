@@ -17,6 +17,7 @@ const props = defineProps<{
   charList: CharCell[]
   selectedIndices: Set<number>
   hideSpaces: boolean
+  filterSymbols: boolean
   previewMode: 'full' | 'simple' | 'off'
   extractedList: Array<{ indices: number[]; color: string }>
   /** 绑定选择事件的函数 */
@@ -117,11 +118,19 @@ function isNewline(cell: CharCell): boolean {
 }
 
 /**
+ * 判断是否为符号字符（非中英文、数字、空格、换行）
+ */
+function isSymbol(cell: CharCell): boolean {
+  return !/^[\u4e00-\u9fa5a-zA-Z0-9\s\n]+$/.test(cell.char)
+}
+
+/**
  * 是否显示单元格
  */
 function shouldShowCell(cell: CharCell): boolean {
   if (isNewline(cell)) return true
   if (isSpace(cell) && props.hideSpaces) return false
+  if (isSymbol(cell) && props.filterSymbols) return false
   return true
 }
 

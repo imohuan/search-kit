@@ -81,6 +81,7 @@ export interface ExtractorState {
   selectedIndices: number[];
   hideSpaces: boolean;
   previewMode: "full" | "simple" | "off"; // 预览模式：完整/简洁/关闭
+  symbolsCleared?: boolean; // 符号是否已清除
 }
 
 // ============ App Config Types ============

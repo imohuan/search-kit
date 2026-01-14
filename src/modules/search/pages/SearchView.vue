@@ -129,7 +129,7 @@ onMounted(async () => {
       class="px-3 py-2 border-t border-slate-100 flex items-center gap-2 bg-white/95 backdrop-blur-sm shrink-0 h-[52px]">
       <!-- 提取项分页控制 -->
       <div v-if="hasExtractedItems"
-        class="flex items-center bg-slate-100 rounded-xl border border-slate-200 flex-1 min-w-0 shadow-sm overflow-hidden">
+        class="flex items-center bg-slate-50 rounded-xl border border-slate-100 flex-1 min-w-0 overflow-hidden">
         <button @click="prevExtractedItem"
           class="w-8 h-9 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-white transition-all active:scale-90"
           :disabled="currentExtractedIndex <= 0">

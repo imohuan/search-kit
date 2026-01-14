@@ -291,20 +291,10 @@ export function useExtractor() {
   }
 
   /**
-   * 清除符号（保留汉字、字母、数字和空格）
-   * 清除后需要同时清空选中索引和提取列表，因为索引会失效
+   * 切换符号过滤状态
    */
-  function clearSymbols(): void {
-    const oldText = store.rawText;
-    const newText = store.rawText.replace(/[^\u4e00-\u9fa5a-zA-Z0-9\s]/g, "");
-    if (oldText !== newText) {
-      store.rawText = newText;
-      // 清除符号后索引会失效，需要清空选中和提取列表
-      store.clearSelectedIndices();
-      store.clearExtractedList();
-      editingIndex.value = -1;
-      showToast("已清除符号");
-    }
+  function toggleSymbolsCleared(): void {
+    store.symbolsCleared = !store.symbolsCleared;
   }
 
   /**
@@ -445,6 +435,7 @@ export function useExtractor() {
         store.previewMode = val;
       },
     }),
+    symbolsCleared: computed(() => store.symbolsCleared),
     charList,
     simpleCharList,
     extractedList: computed(() => store.extractedList),
@@ -466,7 +457,7 @@ export function useExtractor() {
     bindGridSelectionEvents,
     unbindGridSelectionEvents,
     pasteFromClipboard,
-    clearSymbols,
+    toggleSymbolsCleared,
     selectAll,
     invertSelection,
     clearAllResults,
