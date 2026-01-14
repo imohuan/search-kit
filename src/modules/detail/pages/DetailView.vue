@@ -9,7 +9,6 @@ import { useStorage } from '@vueuse/core'
 import { useAppStore } from '@/stores/app.store'
 import { useDocumentStore } from '@/stores/document.store'
 import { useDetailStore } from '@/stores/detail.store'
-import { useGesture } from '@/composables/useGesture'
 import { usePinchZoom } from '@/composables/usePinchZoom'
 import type { Document } from '@/types'
 import {
@@ -28,7 +27,6 @@ const detailStore = useDetailStore()
 const isFullMode = ref(false)
 const loading = ref(false)
 const scrollContainer = ref<HTMLElement | null>(null)
-const pageContainer = ref<HTMLElement | null>(null)
 
 // 用于标记当前匹配的唯一ID
 const currentMatchId = 'current-match-highlight'
@@ -40,7 +38,6 @@ const currentFontSize = useStorage('detail-font-size', 16)
 const { setScale: setPinchScale } = usePinchZoom(scrollContainer, {
   minScale: appStore.config.minFontSize,
   maxScale: appStore.config.maxFontSize,
-  step: 2,
   onZoom: (scale) => setFontSizeWithScroll(scale)
 })
 
@@ -74,40 +71,54 @@ const fileName = computed(() => {
   return detailStore.currentResult?.fileName ?? currentDocument.value?.fileName ?? '未知文档'
 })
 
-/** 在纯文本上直接高亮，然后转换为HTML */
+/** 在纯文本上直接高亮，然后转换为HTML（过滤空行） */
 function highlightAndConvertToHtml(text: string, positions: number[]): string {
   if (!text) return ''
   const posSet = new Set(positions)
-  let result = ''
-  let inHighlight = false
+
+  // 先按行分割，过滤空行，同时记录每行在原文中的起始位置
+  const lines: { content: string; startPos: number }[] = []
+  let currentPos = 0
+  for (const line of text.split('\n')) {
+    if (line.trim() !== '') {
+      lines.push({ content: line, startPos: currentPos })
+    }
+    currentPos += line.length + 1 // +1 是换行符
+  }
+
+  // 处理每一行
+  const htmlLines: string[] = []
   let isFirstHighlight = true
 
-  for (let i = 0; i < text.length; i++) {
-    const char = text[i]!
-    const shouldHighlight = posSet.has(i)
+  for (const { content, startPos } of lines) {
+    let lineHtml = ''
+    let inHighlight = false
 
-    if (shouldHighlight && !inHighlight) {
-      result += isFirstHighlight
-        ? `<mark class="highlight" id="${currentMatchId}">`
-        : '<mark class="highlight">'
-      isFirstHighlight = false
-      inHighlight = true
-    } else if (!shouldHighlight && inHighlight) {
-      result += '</mark>'
-      inHighlight = false
-    }
+    for (let i = 0; i < content.length; i++) {
+      const char = content[i]!
+      const originalPos = startPos + i
+      const shouldHighlight = posSet.has(originalPos)
 
-    if (char === '\n') {
-      if (inHighlight) result += '</mark>'
-      result += '</div><div class="docx-p">'
-      if (inHighlight) result += '<mark class="highlight">'
-    } else {
+      if (shouldHighlight && !inHighlight) {
+        lineHtml += isFirstHighlight
+          ? `<mark class="highlight" id="${currentMatchId}">`
+          : '<mark class="highlight">'
+        isFirstHighlight = false
+        inHighlight = true
+      } else if (!shouldHighlight && inHighlight) {
+        lineHtml += '</mark>'
+        inHighlight = false
+      }
+
       const entities: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }
-      result += entities[char] ?? char
+      lineHtml += entities[char] ?? char
     }
+
+    if (inHighlight) lineHtml += '</mark>'
+    htmlLines.push(`<div class="docx-p">${lineHtml}</div>`)
   }
-  if (inHighlight) result += '</mark>'
-  return `<div class="docx-p">${result}</div>`
+
+  return htmlLines.join('')
 }
 
 /** 计算高亮后的HTML内容 */
@@ -164,21 +175,6 @@ function scrollToHighlight() {
 
 watch(isFullMode, () => scrollToHighlight())
 
-// 集成右滑返回手势
-const { isSwiping, swipeDistance, swipeDirection } = useGesture(pageContainer, {
-  threshold: 100,
-  onSwipeRight: () => goBack()
-})
-
-const swipeStyle = computed(() => {
-  if (!isSwiping.value || swipeDirection.value !== 'right') return {}
-  const progress = Math.min(swipeDistance.value / 100, 1)
-  return {
-    transform: `translateX(${swipeDistance.value * 0.3}px)`,
-    opacity: 1 - progress * 0.3
-  }
-})
-
 onMounted(() => {
   // 如果没有数据，返回上一页
   if (!detailStore.currentResult) {
@@ -190,7 +186,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div ref="pageContainer" class="detail-view" :style="swipeStyle">
+  <div class="detail-view">
     <!-- Header -->
     <div class="detail-header">
       <!-- 返回按钮 -->
@@ -237,7 +233,7 @@ onMounted(() => {
 
         <!-- 内容区域 -->
         <div v-else
-          class="doc-content-render max-w-none text-slate-700 leading-8 whitespace-pre-wrap wrap-break-word font-sans transition-all"
+          class="doc-content-render max-w-none text-slate-700 leading-8 whitespace-pre-wrap wrap-break-word font-sans select-text"
           :style="{ fontSize: currentFontSize + 'px', lineHeight: '1.6' }" v-html="displayContent" />
 
         <!-- 底部留白 -->

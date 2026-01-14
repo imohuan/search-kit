@@ -6,7 +6,6 @@ import { ref, onMounted, onUnmounted, type Ref } from "vue";
 export interface PinchZoomOptions {
   minScale?: number; // 最小缩放值
   maxScale?: number; // 最大缩放值
-  step?: number; // 每次缩放的步进值
   onZoom?: (scale: number, direction: "in" | "out") => void; // 缩放回调
 }
 
@@ -15,7 +14,7 @@ export interface PinchZoomOptions {
  * 提供移动端双指缩放检测功能，用于调整字体大小等场景
  */
 export function usePinchZoom(elementRef: Ref<HTMLElement | null>, options: PinchZoomOptions = {}) {
-  const { minScale = 12, maxScale = 36, step = 2, onZoom } = options;
+  const { minScale = 12, maxScale = 36, onZoom } = options;
 
   // 状态
   const isPinching = ref(false);
@@ -62,14 +61,14 @@ export function usePinchZoom(elementRef: Ref<HTMLElement | null>, options: Pinch
     // 计算缩放比例
     const ratio = currentDistance / initialDistance;
 
-    // 根据比例计算新的缩放值
-    // 放大时 ratio > 1，缩小时 ratio < 1
-    const delta = (ratio - 1) * step * 2;
-    let newScale = lastScale + delta;
+    // 添加阻尼系数，减弱缩放强度
+    const damping = 0.3;
+    const dampedRatio = 1 + (ratio - 1) * damping;
 
-    // 限制范围
-    newScale = Math.max(minScale, Math.min(maxScale, newScale));
-    newScale = Math.round(newScale); // 取整
+    // 计算新的缩放值，限制范围并保留一位小数
+    const rawScale = lastScale * dampedRatio;
+    const clampedScale = Math.max(minScale, Math.min(maxScale, rawScale));
+    const newScale = Math.round(clampedScale * 10) / 10;
 
     if (newScale !== currentScale.value) {
       const direction = newScale > currentScale.value ? "in" : "out";

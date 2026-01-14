@@ -51,7 +51,7 @@ const emit = defineEmits<{
     <div
       class="text-slate-600 leading-relaxed bg-slate-50/50 rounded-lg border border-slate-50 transition-all doc-content-render"
       :class="displayOptions.compact ? 'p-2' : 'p-3'"
-      :style="{ fontSize: displayOptions.compact ? '12px' : `${fontSize || 14}px`, lineHeight: displayOptions.compact ? '1.4' : '1.6' }"
+      :style="{ fontSize: `${fontSize || 14}px`, lineHeight: displayOptions.compact ? '1.4' : '1.6' }"
       v-html="result.highlightedSnippet" />
 
     <!-- 底部信息 -->
