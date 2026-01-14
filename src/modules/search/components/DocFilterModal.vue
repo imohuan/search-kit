@@ -4,7 +4,7 @@
  * Requirements: 4.8
  */
 import type { Document } from '@/types'
-import { CloseOutlined, DescriptionOutlined, FilterListOutlined } from '@vicons/material'
+import { CloseOutlined, DescriptionOutlined, FilterListOutlined, FolderOpenOutlined } from '@vicons/material'
 
 const props = defineProps<{
   visible: boolean
@@ -85,7 +85,7 @@ function getSelectedCount(): number {
           <!-- 文档列表 -->
           <div class="max-h-[60vh] overflow-y-auto custom-scrollbar px-5 py-3 space-y-2">
             <div v-if="documents.length === 0" class="text-center py-10 text-slate-400">
-              <i class="ph ph-files text-4xl mb-2 opacity-50"></i>
+              <DescriptionOutlined class="size-10 mb-2 opacity-50" />
               <p class="text-sm">暂无文档</p>
             </div>
             <label v-for="doc in documents" :key="doc.id"

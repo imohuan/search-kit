@@ -29,13 +29,13 @@ const emit = defineEmits<{
 
     <!-- 空状态 - 无搜索词 -->
     <div v-else-if="!query?.trim()" class="empty-state">
-      <SearchOffFilled class="text-gray-400 mb-2 size-20" />
+      <SearchOffFilled class="text-gray-400 mb-2 size-10" />
       <p class="text-gray-500">输入关键词开始搜索</p>
     </div>
 
     <!-- 空状态 - 无结果 -->
     <div v-else-if="results.length === 0" class="empty-state">
-      <SentimentDissatisfiedOutlined class="text-gray-400 mb-2 size-20" />
+      <SentimentDissatisfiedOutlined class="text-gray-400 mb-2 size-10" />
       <p class="text-gray-500">未找到匹配结果</p>
       <p class="text-gray-400 text-sm mt-1">试试其他关键词</p>
     </div>

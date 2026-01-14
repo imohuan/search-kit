@@ -102,6 +102,6 @@ function handleDelete(e: Event) {
 }
 
 .delete-icon {
-  @apply text-lg;
+  @apply size-5
 }
 </style>

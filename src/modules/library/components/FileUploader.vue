@@ -126,7 +126,7 @@ function handleFileChange(e: Event) {
 }
 
 .upload-icon {
-  @apply text-indigo-600 text-xl;
+  @apply text-indigo-600 size-6;
 }
 
 .upload-progress {
