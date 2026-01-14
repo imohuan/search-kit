@@ -113,17 +113,6 @@ onMounted(async () => {
       <SearchBar v-model="query" :is-exact="isExact" :is-searching="isSearching"
         :is-filter-active="selectedDocIds.size < documentStore.documentCount" @update:is-exact="isExact = $event"
         @search="performSearch" @clear="clearSearch" @open-filter="openDocFilter" />
-
-      <!-- 工具栏 -->
-      <div class="toolbar">
-        <!-- 字体大小调节 -->
-        <div class="font-size-control">
-          <TextFieldsOutlined class="w-4 h-4 text-gray-400" />
-          <input type="range" class="font-slider" :min="appStore.config.minFontSize" :max="appStore.config.maxFontSize"
-            :value="fontSize" @input="setFontSize(Number(($event.target as HTMLInputElement).value))" />
-          <span class="text-xs text-gray-500 w-6">{{ fontSize }}</span>
-        </div>
-      </div>
     </div>
 
     <!-- 搜索结果区域 -->
@@ -204,24 +193,5 @@ onMounted(async () => {
   @apply bg-white px-4 py-3;
   @apply border-b border-gray-100;
   @apply shrink-0;
-}
-
-.toolbar {
-  @apply flex items-center gap-3 mt-3;
-}
-
-.font-size-control {
-  @apply flex items-center gap-2 flex-1;
-}
-
-.font-slider {
-  @apply flex-1 h-1 bg-gray-200 rounded-full;
-  @apply appearance-none cursor-pointer;
-}
-
-.font-slider::-webkit-slider-thumb {
-  @apply appearance-none w-4 h-4;
-  @apply bg-blue-500 rounded-full;
-  @apply cursor-pointer;
 }
 </style>

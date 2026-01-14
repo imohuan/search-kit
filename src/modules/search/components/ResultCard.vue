@@ -19,8 +19,7 @@ const emit = defineEmits<{
 <template>
   <div
     class="bg-white rounded-xl p-4 border border-slate-100 shadow-sm active:scale-[0.99] active:bg-slate-50 transition-all cursor-pointer"
-    @click="emit('click', result)"
-  >
+    @click="emit('click', result)">
     <!-- 文件名和匹配跨度 badge -->
     <div class="flex items-center gap-2 mb-2">
       <DescriptionOutlined class="w-5 h-5 text-indigo-500 shrink-0" />
@@ -32,14 +31,12 @@ const emit = defineEmits<{
         跨度 {{ result.matchLength }} 字
       </span>
     </div>
-    
+
     <!-- 高亮片段 -->
     <div
       class="text-slate-600 leading-relaxed whitespace-pre-wrap wrap-break-word bg-slate-50/50 p-3 rounded-lg border border-slate-50 transition-all"
-      :style="{ fontSize: `${fontSize || 14}px`, lineHeight: '1.6' }"
-      v-html="result.highlightedSnippet"
-    />
-    
+      :style="{ fontSize: `${fontSize || 14}px`, lineHeight: '1.6' }" v-html="result.highlightedSnippet" />
+
     <!-- 底部信息 -->
     <div class="mt-2 flex justify-between items-center text-xs text-slate-400">
       <span>位置: {{ result.matchIndex }}</span>
@@ -51,5 +48,14 @@ const emit = defineEmits<{
 </template>
 
 <style scoped>
-/* 样式已内联到模板中，无需额外样式 */
+/* 高亮样式 - 与 DetailModal 保持一致 */
+:deep(mark),
+:deep(mark.highlight) {
+  background-color: #fef08a;
+  color: #854d0e;
+  padding: 0 2px;
+  border-radius: 2px;
+  font-weight: 600;
+  border-bottom: 2px solid #eab308;
+}
 </style>
