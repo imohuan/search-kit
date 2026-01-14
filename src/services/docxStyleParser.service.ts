@@ -97,17 +97,29 @@ class DocxStyleParserService {
    * 从 XML 文档中提取内容
    */
   private extractContentFromXml(xmlDoc: Document): { text: string; html: string } {
-    const textParts: string[] = [];
-    const htmlParts: string[] = [];
-
     // 获取文档主体
     const body = xmlDoc.querySelector("w\\:body, body");
     if (!body) {
       return { text: "", html: "" };
     }
 
-    // 遍历所有子元素（段落和表格）
-    const children = Array.from(body.children);
+    // 递归遍历所有节点
+    const result = this.traverseNodes(body);
+
+    return {
+      text: result.text,
+      html: result.html,
+    };
+  }
+
+  /**
+   * 递归遍历节点，处理所有段落和表格（包括嵌套内容）
+   */
+  private traverseNodes(node: Element): { text: string; html: string } {
+    const textParts: string[] = [];
+    const htmlParts: string[] = [];
+
+    const children = Array.from(node.children);
 
     children.forEach((child) => {
       const tagName = child.tagName.toLowerCase();
@@ -115,16 +127,31 @@ class DocxStyleParserService {
       if (tagName === "w:p" || tagName === "p") {
         // 段落
         const { text, html } = this.parseParagraph(child);
-        if (text || html) {
-          textParts.push(text);
-          htmlParts.push(html);
-        }
+        textParts.push(text);
+        htmlParts.push(html);
       } else if (tagName === "w:tbl" || tagName === "tbl") {
         // 表格
         const { text, html } = this.parseTable(child);
-        if (text || html) {
-          textParts.push(text);
-          htmlParts.push(html);
+        textParts.push(text);
+        htmlParts.push(html);
+      } else if (
+        tagName === "w:sdt" ||
+        tagName === "sdt" ||
+        tagName === "w:sdtcontent" ||
+        tagName === "sdtcontent" ||
+        tagName === "w:txbxcontent" ||
+        tagName === "txbxcontent"
+      ) {
+        // 容器节点，递归进入
+        const result = this.traverseNodes(child);
+        textParts.push(result.text);
+        htmlParts.push(result.html);
+      } else if (child.children.length > 0 && !tagName.endsWith("pr")) {
+        // 其他未知标签，尝试递归（但跳过属性节点如 pPr, rPr）
+        const result = this.traverseNodes(child);
+        if (result.text || result.html) {
+          textParts.push(result.text);
+          htmlParts.push(result.html);
         }
       }
     });
@@ -145,31 +172,56 @@ class DocxStyleParserService {
     // 获取段落样式
     const paragraphStyle = this.extractParagraphStyle(paragraph);
 
-    // 获取所有文本运行 (w:r)
-    const runs = paragraph.querySelectorAll("w\\:r, r");
+    // 遍历段落的所有子节点（包括 w:r 和 w:br）
+    const children = Array.from(paragraph.children);
 
-    runs.forEach((run) => {
-      // 检查是否包含换行符
-      const breakElement = run.querySelector("w\\:br, br");
+    children.forEach((child) => {
+      const tagName = child.tagName.toLowerCase();
 
-      const { text, html } = this.parseRun(run);
-      if (text) {
-        textParts.push(text);
-        htmlParts.push(html);
-      }
+      if (tagName === "w:r" || tagName === "r") {
+        // 文本运行
+        const runChildren = Array.from(child.children);
+        let hasText = false;
 
-      // 如果包含换行符，添加换行标记
-      if (breakElement) {
+        runChildren.forEach((runChild) => {
+          const runChildTag = runChild.tagName.toLowerCase();
+
+          if (runChildTag === "w:t" || runChildTag === "t") {
+            // 文本节点
+            const { text, html } = this.parseRun(child);
+            if (text) {
+              textParts.push(text);
+              htmlParts.push(html);
+              hasText = true;
+            }
+          } else if (runChildTag === "w:br" || runChildTag === "br") {
+            // Run 内部的换行
+            textParts.push("\n");
+            htmlParts.push('<br class="docx-br">');
+          }
+        });
+
+        // 检查是否只有 br 没有 t
+        if (!hasText) {
+          const hasBr = child.querySelector("w\\:br, br");
+          if (hasBr) {
+            textParts.push("\n");
+            htmlParts.push('<br class="docx-br">');
+          }
+        }
+      } else if (tagName === "w:br" || tagName === "br") {
+        // 段落级别的换行
         textParts.push("\n");
-        htmlParts.push('<span class="docx-br"></span>');
+        htmlParts.push('<br class="docx-br">');
       }
+      // 忽略 w:pPr 等属性节点
     });
 
     const paragraphText = textParts.join("");
     const paragraphHtml = this.wrapParagraphWithStyle(htmlParts.join(""), paragraphStyle);
 
     return {
-      text: paragraphText,
+      text: paragraphText + "\n", // 确保段落后有换行
       html: paragraphHtml,
     };
   }
@@ -410,7 +462,13 @@ class DocxStyleParserService {
    * 用段落样式包装内容
    */
   private wrapParagraphWithStyle(content: string, style: DocxParagraphStyle): string {
-    const styles: string[] = [];
+    const styles: string[] = [
+      "display: block",
+      "min-height: 1.5em",
+      "margin-bottom: 0.8em",
+      "line-height: 1.6",
+      "word-wrap: break-word",
+    ];
     const classes: string[] = ["docx-p"];
 
     if (style.alignment) {
@@ -424,19 +482,23 @@ class DocxStyleParserService {
     }
     if (style.isList) {
       // 列表项样式
-      const indent = (style.listLevel || 0) * 20 + 20;
-      styles.push(`padding-left: ${indent}pt`);
-      styles.push("position: relative");
+      styles.push("display: list-item");
+      styles.push("list-style-type: disc");
+      styles.push("list-style-position: inside");
 
-      // 添加列表标记（简单的圆点）
-      const listMarker = `<span style="position: absolute; left: ${indent - 15}pt;">•</span>`;
-      content = listMarker + content;
+      const indent = (style.listLevel || 0) * 20 + 20;
+      if (!style.marginLeft) {
+        styles.push(`margin-left: ${indent}pt`);
+      }
     }
 
-    const styleAttr = styles.length > 0 ? ` style="${styles.join("; ")}"` : "";
+    const styleAttr = ` style="${styles.join("; ")}"`;
     const classAttr = ` class="${classes.join(" ")}"`;
 
-    return `<p${classAttr}${styleAttr}>${content || "&nbsp;"}</p>`;
+    // 确保空段落也有高度
+    const innerContent = content || "<br>";
+
+    return `<div${classAttr}${styleAttr}>${innerContent}</div>`;
   }
 
   /**

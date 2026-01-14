@@ -581,11 +581,18 @@ input[type="range"]::-webkit-slider-thumb {
 
 /* docx 段落样式 */
 :deep(.docx-p) {
-  display: block;
+  display: block !important;
   min-height: 1.5em;
   margin-bottom: 0.8em;
   line-height: 1.6;
   word-wrap: break-word;
+}
+
+/* docx 换行标签强制换行 */
+:deep(.docx-br) {
+  display: block;
+  content: "";
+  margin-bottom: 0.3em;
 }
 
 /* 纯文本换行支持 */
