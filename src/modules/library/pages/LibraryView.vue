@@ -3,12 +3,15 @@
  * 文档库视图页面
  * Requirements: 3.3, 3.4, 3.5, 3.6
  */
-import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useLibrary } from '../composables/useLibrary'
+import { useDetailStore } from '@/stores/detail.store'
 import FileUploader from '../components/FileUploader.vue'
 import FileList from '../components/FileList.vue'
-import DetailModal from '@/components/modal/DetailModal.vue'
 import type { Document, SearchResult } from '@/types'
+
+const router = useRouter()
+const detailStore = useDetailStore()
 
 const {
   documents,
@@ -19,24 +22,6 @@ const {
   deleteDocument
 } = useLibrary()
 
-// 预览弹窗状态
-const showPreview = ref(false)
-const previewDocument = ref<Document | null>(null)
-
-// 将 Document 转换为 SearchResult 格式供 DetailModal 使用
-const previewResult = computed<SearchResult | null>(() => {
-  if (!previewDocument.value || !previewDocument.value.id) return null
-  return {
-    id: previewDocument.value.id,
-    fileName: previewDocument.value.fileName,
-    content: previewDocument.value.content,
-    matchIndex: 0,
-    matchLength: 0,
-    matchPositions: [], // 文档库预览不需要高亮位置
-    highlightedSnippet: ''
-  }
-})
-
 /**
  * 处理文件上传
  */
@@ -45,11 +30,22 @@ function handleUpload(files: FileList) {
 }
 
 /**
- * 处理文档点击 - 打开预览
+ * 处理文档点击 - 跳转到详情页
  */
 function handleDocumentClick(doc: Document) {
-  previewDocument.value = doc
-  showPreview.value = true
+  if (!doc.id) return
+  // 将 Document 转换为 SearchResult 格式
+  const result: SearchResult = {
+    id: doc.id,
+    fileName: doc.fileName,
+    content: doc.content,
+    matchIndex: 0,
+    matchLength: 0,
+    matchPositions: [],
+    highlightedSnippet: ''
+  }
+  detailStore.setDetail(result, '', false, '/library')
+  router.push({ name: 'detail', params: { id: doc.id } })
 }
 
 /**
@@ -57,14 +53,6 @@ function handleDocumentClick(doc: Document) {
  */
 function handleDocumentDelete(doc: Document) {
   deleteDocument(doc)
-}
-
-/**
- * 关闭预览弹窗
- */
-function closePreview() {
-  showPreview.value = false
-  previewDocument.value = null
 }
 </script>
 
@@ -84,10 +72,6 @@ function closePreview() {
 
       <FileList :documents="documents" :loading="loading" @click="handleDocumentClick" @delete="handleDocumentDelete" />
     </div>
-
-    <!-- 文档预览弹窗 - 使用 DetailModal -->
-    <DetailModal :visible="showPreview" :result="previewResult" search-keyword="" :is-exact="false"
-      @close="closePreview" @update:visible="showPreview = $event" />
   </div>
 </template>
 

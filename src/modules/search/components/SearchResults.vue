@@ -3,13 +3,14 @@
  * 搜索结果列表组件
  * Requirements: 2.4
  */
-import { ref } from 'vue'
+import { ref, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
+import { useSearchStore } from '@/stores/search.store'
 import type { SearchResult } from '@/types'
 import ResultCard from './ResultCard.vue'
 import DisplayOptionsMenu, { type DisplayOptions } from './DisplayOptionsMenu.vue'
 import { SearchOffFilled, SentimentDissatisfiedOutlined, TuneOutlined } from '@vicons/material'
 
-defineProps<{
+const props = defineProps<{
   results: SearchResult[]
   fontSize?: number
   isSearching?: boolean
@@ -19,6 +20,11 @@ defineProps<{
 const emit = defineEmits<{
   'result-click': [result: SearchResult]
 }>()
+
+const searchStore = useSearchStore()
+
+// 滚动容器引用
+const scrollContainer = ref<HTMLElement | null>(null)
 
 // 显示选项弹窗状态
 const showOptionsMenu = ref(false)
@@ -37,10 +43,43 @@ function hasCustomOptions(): boolean {
   const opts = displayOptions.value
   return !opts.showTitle || !opts.showSpan || !opts.showPosition || !opts.showDetail || opts.compact
 }
+
+// 保存滚动位置
+function saveScrollPosition() {
+  if (scrollContainer.value) {
+    searchStore.setScrollTop(scrollContainer.value.scrollTop)
+  }
+}
+
+// 恢复滚动位置
+function restoreScrollPosition() {
+  nextTick(() => {
+    if (scrollContainer.value && searchStore.scrollTop > 0) {
+      scrollContainer.value.scrollTop = searchStore.scrollTop
+    }
+  })
+}
+
+// 监听结果变化，有结果时恢复滚动位置
+watch(() => props.results, (newResults) => {
+  if (newResults.length > 0) {
+    restoreScrollPosition()
+  }
+}, { immediate: true })
+
+onMounted(() => {
+  // 组件挂载时恢复滚动位置
+  restoreScrollPosition()
+})
+
+onBeforeUnmount(() => {
+  // 组件卸载前保存滚动位置
+  saveScrollPosition()
+})
 </script>
 
 <template>
-  <div class="search-results">
+  <div ref="scrollContainer" class="search-results" @scroll="saveScrollPosition">
     <!-- 加载状态 -->
     <div v-if="isSearching" class="loading-state">
       <div class="spinner" />

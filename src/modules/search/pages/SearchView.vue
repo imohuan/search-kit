@@ -3,15 +3,16 @@
  * 搜索视图页面
  * Requirements: 2.1-2.9
  */
-import { onMounted, ref } from 'vue'
+import { onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useSearch } from '../composables/useSearch'
 import { useDocumentStore } from '@/stores/document.store'
 import { useAppStore } from '@/stores/app.store'
+import { useDetailStore } from '@/stores/detail.store'
 import SearchBar from '../components/SearchBar.vue'
 import SearchResults from '../components/SearchResults.vue'
 import DocFilterModal from '../components/DocFilterModal.vue'
 import SnippetDropdown from '../components/SnippetDropdown.vue'
-import DetailModal from '@/components/modal/DetailModal.vue'
 import type { SearchResult } from '@/types'
 import {
   TextFieldsOutlined,
@@ -22,8 +23,10 @@ import {
   SpellcheckOutlined
 } from '@vicons/material'
 
+const router = useRouter()
 const documentStore = useDocumentStore()
 const appStore = useAppStore()
+const detailStore = useDetailStore()
 
 const {
   // 搜索状态
@@ -69,23 +72,12 @@ const {
   toggleFilterSymbols
 } = useSearch()
 
-// 详情弹窗状态
-const showDetail = ref(false)
-const selectedResult = ref<SearchResult | null>(null)
-
 /**
- * 处理结果点击
+ * 处理结果点击 - 跳转到详情页
  */
 function handleResultClick(result: SearchResult) {
-  selectedResult.value = result
-  showDetail.value = true
-}
-
-/**
- * 关闭详情弹窗
- */
-function closeDetail() {
-  showDetail.value = false
+  detailStore.setDetail(result, query.value, isExact.value, '/search')
+  router.push({ name: 'detail', params: { id: result.id } })
 }
 
 /**
@@ -184,10 +176,6 @@ onMounted(async () => {
     <!-- 提取项选择弹窗 -->
     <SnippetDropdown :visible="showSnippetDropdown" :items="extractedItems" :current-index="currentExtractedIndex"
       @close="closeSnippetDropdown" @select="goToExtractedItem" />
-
-    <!-- 详情弹窗 -->
-    <DetailModal :visible="showDetail" :result="selectedResult" :search-keyword="query" :is-exact="isExact"
-      @close="closeDetail" @update:visible="showDetail = $event" />
   </div>
 </template>
 
