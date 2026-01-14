@@ -51,12 +51,16 @@ const cellSize = computed(() => appStore.config.charGridWidth)
 // 生成 CSS 变量样式（用于完整预览模式）
 const cssVariables = computed(() => {
   const vars: Record<string, string> = {}
-  props.extractedList.forEach((item, idx) => {
-    const color = item.color || '#6366f1'
-    vars[`--ext-bg-${idx}`] = color + '33'
-    vars[`--ext-border-${idx}`] = color + '66'
-    vars[`--ext-color-${idx}`] = color
-  })
+
+  // 确保为所有可能的索引生成 CSS 变量（最多 40 个）
+  for (let i = 0; i < Math.max(props.extractedList.length, 40); i++) {
+    const item = props.extractedList[i]
+    const color = item?.color || '#6366f1'
+    vars[`--ext-bg-${i}`] = color + '33'
+    vars[`--ext-border-${i}`] = color + '66'
+    vars[`--ext-color-${i}`] = color
+  }
+
   return vars
 })
 
