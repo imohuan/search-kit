@@ -18,7 +18,8 @@ import {
   ChevronLeftOutlined,
   ChevronRightOutlined,
   ExpandMoreOutlined,
-  RefreshOutlined
+  RefreshOutlined,
+  SpellcheckOutlined
 } from '@vicons/material'
 
 const documentStore = useDocumentStore()
@@ -31,6 +32,7 @@ const {
   isSearching,
   results,
   fontSize,
+  filterSymbols,
 
   // 文档筛选状态
   selectedDocIds,
@@ -64,7 +66,10 @@ const {
   closeSnippetDropdown,
 
   // 字体大小方法
-  setFontSize
+  setFontSize,
+
+  // 符号过滤方法
+  toggleFilterSymbols
 } = useSearch()
 
 // 详情弹窗状态
@@ -120,10 +125,10 @@ onMounted(async () => {
       @result-click="handleResultClick" />
 
     <!-- 底部辅助栏 (分页 + 字体滑块 + 剪切板) -->
-    <div v-if="hasExtractedItems"
+    <div
       class="px-3 py-2 border-t border-slate-100 flex items-center gap-2 bg-white/95 backdrop-blur-sm shrink-0 h-[52px]">
       <!-- 提取项分页控制 -->
-      <div
+      <div v-if="hasExtractedItems"
         class="flex items-center bg-slate-100 rounded-xl border border-slate-200 flex-1 min-w-0 shadow-sm overflow-hidden">
         <button @click="prevExtractedItem"
           class="w-8 h-9 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-white transition-all active:scale-90"
@@ -144,9 +149,9 @@ onMounted(async () => {
 
         <!-- 重新应用按钮 -->
         <button @click="handleUseExtractedItem"
-          class="w-8 h-9 flex items-center justify-center text-indigo-600 transition-all active:scale-90"
+          class="w-8 h-9 flex items-center justify-center text-slate-400 transition-all active:scale-90"
           title="重新应用当前选中内容">
-          <RefreshOutlined class="w-5 h-5" />
+          <RefreshOutlined class="w-4 h-4" />
         </button>
 
         <button @click="nextExtractedItem"
@@ -164,6 +169,14 @@ onMounted(async () => {
           class="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-500" />
         <TextFieldsOutlined class="w-5 h-5 text-slate-600" />
       </div>
+
+      <!-- 符号过滤开关 -->
+      <button @click="toggleFilterSymbols"
+        class="w-8 h-9 flex items-center justify-center transition-all active:scale-90"
+        :class="filterSymbols ? 'text-indigo-600' : 'text-slate-300'"
+        :title="filterSymbols ? '符号过滤已开启（只匹配中英文和数字）' : '符号过滤已关闭'">
+        <SpellcheckOutlined class="w-5 h-5" />
+      </button>
     </div>
 
     <!-- 文档筛选弹窗 -->

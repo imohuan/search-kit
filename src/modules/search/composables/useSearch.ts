@@ -40,6 +40,10 @@ export function useSearch() {
   // ============ 字体大小状态 ============
   const fontSize = useStorage("search-font-size", 14);
 
+  // ============ 符号过滤状态 ============
+  // 开启后搜索时只匹配中英文和数字
+  const filterSymbols = useStorage("search-filter-symbols", false);
+
   // ============ 计算属性 ============
 
   // 筛选后的文档列表
@@ -91,6 +95,7 @@ export function useSearch() {
         maxGap: appStore.config.maxSearchGap,
         isExact: isExact.value,
         previewRange: appStore.config.previewRange,
+        filterSymbols: filterSymbols.value,
       });
       results.value = searchResults;
     } finally {
@@ -271,6 +276,16 @@ export function useSearch() {
     fontSize.value = Math.max(min, Math.min(max, size));
   }
 
+  /**
+   * 切换符号过滤模式
+   */
+  function toggleFilterSymbols() {
+    filterSymbols.value = !filterSymbols.value;
+    if (query.value.trim()) {
+      performSearch();
+    }
+  }
+
   // ============ 监听器 ============
 
   // 监听搜索关键词变化，触发防抖搜索
@@ -304,6 +319,7 @@ export function useSearch() {
     resultCount,
     hasResults,
     fontSize,
+    filterSymbols,
 
     // 文档筛选状态
     selectedDocIds,
@@ -342,5 +358,8 @@ export function useSearch() {
 
     // 字体大小方法
     setFontSize,
+
+    // 符号过滤方法
+    toggleFilterSymbols,
   };
 }

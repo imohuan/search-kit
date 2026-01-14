@@ -21,18 +21,25 @@ class SearchService {
       return [];
     }
 
+    // 如果开启符号过滤，只保留中英文和数字
+    const processedQuery = options.filterSymbols ? query.replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, "") : query;
+
+    if (!processedQuery) {
+      return [];
+    }
+
     const results: SearchResult[] = [];
 
     for (const doc of documents) {
       if (!doc.id) continue;
 
-      const matches = this.findMatches(doc.content, query, options);
+      const matches = this.findMatches(doc.content, processedQuery, options);
 
       for (const match of matches) {
         const highlightedSnippet = this.generateSnippet(
           doc.content,
           match,
-          query,
+          processedQuery,
           options.previewRange,
           options.isExact,
         );
@@ -192,13 +199,15 @@ class SearchService {
 
   /**
    * 将纯文本转换为带换行的HTML
+   * 过滤掉空行，只保留有内容的行
    */
   private textToHtml(text: string): string {
     if (!text) return "";
-    // 将换行符转换为div，确保每行显示
+    // 将换行符转换为div，过滤掉空行
     return text
       .split("\n")
-      .map((line) => `<div class="docx-p">${line || "<br>"}</div>`)
+      .filter((line) => line.trim() !== "")
+      .map((line) => `<div class="docx-p">${line}</div>`)
       .join("");
   }
 

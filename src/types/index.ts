@@ -46,6 +46,7 @@ export interface SearchOptions {
   maxGap: number;
   isExact: boolean;
   previewRange: number;
+  filterSymbols?: boolean; // 是否过滤符号，只匹配中英文和数字
 }
 
 // ============ Extractor Types ============
