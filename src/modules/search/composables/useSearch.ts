@@ -293,6 +293,13 @@ export function useSearch() {
     debouncedSearch();
   });
 
+  // 监听精确模式变化，立即重新搜索
+  watch(isExact, () => {
+    if (query.value.trim()) {
+      performSearch();
+    }
+  });
+
   // 监听文档列表变化，更新筛选状态
   watch(
     () => documentStore.documents,
