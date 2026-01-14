@@ -76,6 +76,7 @@ export function useGridSelection(options: GridSelectionOptions): GridSelectionRe
   let lastProcessedIndex: number | null = null;
   let rafId: number | null = null;
   let containerEl: HTMLElement | null = null;
+  let isTouchDevice = false; // 标记是否为触摸操作，防止触摸后的模拟鼠标事件
 
   // 待处理的索引变更（用于批量更新，仅在滑动时使用）
   let pendingChanges: Map<number, boolean> = new Map();
@@ -233,6 +234,9 @@ export function useGridSelection(options: GridSelectionOptions): GridSelectionRe
   // ========== 触摸事件处理 ==========
 
   function onTouchStart(e: TouchEvent): void {
+    // 标记为触摸操作
+    isTouchDevice = true;
+
     const touch = e.touches[0];
     if (!touch) return;
     handleSelectionStart(touch.clientX, touch.clientY);
@@ -262,21 +266,33 @@ export function useGridSelection(options: GridSelectionOptions): GridSelectionRe
 
   function onTouchEnd(): void {
     handleSelectionEnd();
+    // 延迟重置触摸标记，防止触摸后的模拟鼠标事件
+    setTimeout(() => {
+      isTouchDevice = false;
+    }, 300);
   }
 
   function onTouchCancel(): void {
     handleSelectionEnd();
+    setTimeout(() => {
+      isTouchDevice = false;
+    }, 300);
   }
 
   // ========== 鼠标事件处理 ==========
 
   function onMouseDown(e: MouseEvent): void {
+    // 如果是触摸设备触发的模拟鼠标事件，忽略
+    if (isTouchDevice) return;
+
     // 只处理左键
     if (e.button !== 0) return;
     handleSelectionStart(e.clientX, e.clientY);
   }
 
   function onMouseMove(e: MouseEvent): void {
+    // 如果是触摸设备触发的模拟鼠标事件，忽略
+    if (isTouchDevice) return;
     if (!isDragging.value) return;
 
     // 使用 RAF 节流
@@ -293,10 +309,14 @@ export function useGridSelection(options: GridSelectionOptions): GridSelectionRe
   }
 
   function onMouseUp(): void {
+    // 如果是触摸设备触发的模拟鼠标事件，忽略
+    if (isTouchDevice) return;
     handleSelectionEnd();
   }
 
   function onMouseLeave(): void {
+    // 如果是触摸设备触发的模拟鼠标事件，忽略
+    if (isTouchDevice) return;
     // 鼠标离开容器时结束选择
     if (isDragging.value) {
       handleSelectionEnd();
