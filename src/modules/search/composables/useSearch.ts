@@ -8,6 +8,7 @@ import { useDebounceFn } from '@vueuse/core'
 import { useSearchStore } from '@/stores/search.store'
 import { useDocumentStore } from '@/stores/document.store'
 import { useExtractorStore } from '@/stores/extractor.store'
+import { useAppStore } from '@/stores/app.store'
 import type { ExtractedItem } from '@/types'
 
 /**
@@ -15,6 +16,7 @@ import type { ExtractedItem } from '@/types'
  * 提供搜索功能、结果管理、文档筛选和提取器分页控制
  */
 export function useSearch() {
+  const appStore = useAppStore()
   const searchStore = useSearchStore()
   const documentStore = useDocumentStore()
   const extractorStore = useExtractorStore()
@@ -118,6 +120,16 @@ export function useSearch() {
       searchStore.performSearch()
     }
   })
+
+  // 监听偏好设置变化，立即重新搜索（previewRange 和 maxSearchGap 会影响搜索结果）
+  watch(
+    () => [appStore.config.previewRange, appStore.config.maxSearchGap],
+    () => {
+      if (searchStore.query.trim()) {
+        searchStore.performSearch()
+      }
+    }
+  )
 
   // 监听文档列表变化，更新筛选状态
   watch(

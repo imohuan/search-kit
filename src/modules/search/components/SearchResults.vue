@@ -4,6 +4,7 @@
  * Requirements: 2.4
  */
 import { ref, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
+import { useStorage } from '@vueuse/core'
 import { useSearchStore } from '@/stores/search.store'
 import type { SearchResult } from '@/types'
 import ResultCard from './ResultCard.vue'
@@ -29,8 +30,8 @@ const scrollContainer = ref<HTMLElement | null>(null)
 // 显示选项弹窗状态
 const showOptionsMenu = ref(false)
 
-// 显示选项状态
-const displayOptions = ref<DisplayOptions>({
+// 显示选项状态（持久化到 localStorage）
+const displayOptions = useStorage<DisplayOptions>('search-display-options', {
   showTitle: true,
   showSpan: true,
   showPosition: true,
