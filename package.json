@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite --host",
     "build": "vue-tsc -b && vite build",
+    "build-only": "vite build",
     "preview": "vite preview --host",
     "test": "vitest --run",
     "test:watch": "vitest",

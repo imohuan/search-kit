@@ -242,9 +242,11 @@ mark.highlight {
 
 /* 字符网格容器 - 优化触摸性能 */
 .char-grid {
-  touch-action: none; /* 禁用浏览器默认触摸行为 */
+  touch-action: pan-y; /* 允许垂直滚动，禁用水平滚动和缩放 */
   -webkit-user-select: none;
   user-select: none;
+  -webkit-overflow-scrolling: touch; /* iOS 平滑滚动 */
+  overscroll-behavior: contain; /* 防止滚动穿透 */
 }
 
 /* 字符单元格 - 优化渲染性能 */
