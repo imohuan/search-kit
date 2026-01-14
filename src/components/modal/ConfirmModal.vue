@@ -42,48 +42,39 @@ const confirmButtonClass = computed(() => {
 <template>
   <Teleport to="body">
     <Transition name="fade">
-      <div
-        v-if="state.visible"
-        class="fixed inset-0 z-200 flex items-center justify-center p-4"
-      >
+      <div v-if="state.visible" class="fixed inset-0 z-200 flex items-center justify-center p-4">
         <!-- 遮罩层 -->
-        <div
-          class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
-          @click="handleCancel"
-        />
-        
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" @click="handleCancel" />
+
         <!-- 弹窗内容 -->
-        <div class="bg-white rounded-4xl w-full max-w-[320px] overflow-hidden relative shadow-2xl z-20 transform transition-all">
+        <div
+          class="bg-white rounded-4xl w-full max-w-[320px] overflow-hidden relative shadow-2xl z-20 transform transition-all">
           <!-- 内容区 -->
           <div class="p-8 text-center">
             <!-- 图标容器 -->
             <div :class="iconContainerClass">
-              <component :is="iconComponent" class="text-3xl" />
+              <component :is="iconComponent" class="size-8" />
             </div>
-            
+
             <!-- 标题 -->
             <h3 class="text-xl font-black text-slate-800 mb-2">
               {{ state.options.title }}
             </h3>
-            
+
             <!-- 消息 -->
             <p class="text-sm text-slate-500 leading-relaxed">
               {{ state.options.message }}
             </p>
           </div>
-          
+
           <!-- 按钮区 -->
           <div class="flex p-4 gap-3 bg-slate-50/50">
             <button
               class="flex-1 py-3.5 text-sm font-bold text-slate-400 bg-white hover:bg-slate-100 rounded-2xl transition-all border border-slate-100 active:scale-95"
-              @click="handleCancel"
-            >
+              @click="handleCancel">
               {{ state.options.cancelText }}
             </button>
-            <button
-              :class="confirmButtonClass"
-              @click="handleConfirm"
-            >
+            <button :class="confirmButtonClass" @click="handleConfirm">
               {{ state.options.confirmText }}
             </button>
           </div>

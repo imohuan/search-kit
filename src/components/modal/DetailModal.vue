@@ -42,7 +42,7 @@ const documentStore = useDocumentStore()
 
 // 状态
 const isFullMode = ref(false) // 全文/片段模式
-const showOriginal = ref(true) // 原版/纯净样式
+const showOriginal = ref(false) // 原版/纯净样式，默认显示纯净样式
 const loading = ref(false)
 const scrollContainer = ref<HTMLElement | null>(null)
 const modalContainer = ref<HTMLElement | null>(null)
@@ -117,17 +117,17 @@ function getHtmlFragment(
 ): string {
   if (!html) return ''
   if (!keyword) return html
-  
+
   // 创建临时DOM解析HTML
   const div = document.createElement('div')
   div.innerHTML = html
   const textContent = div.textContent || ''
-  
+
   // 查找关键词位置
   const lowerText = textContent.toLowerCase()
   const lowerKeyword = keyword.toLowerCase()
   const keywordIndex = lowerText.indexOf(lowerKeyword)
-  
+
   if (keywordIndex === -1 && !props.isExact) {
     // 间隔搜索模式：查找第一个字符的位置
     const firstChar = lowerKeyword[0]
@@ -137,23 +137,23 @@ function getHtmlFragment(
       return highlightHtml(html, keyword, props.isExact)
     }
   }
-  
+
   // 如果range为0，表示全文模式，只高亮不截取
   if (range === 0) {
     return highlightHtml(html, keyword, props.isExact)
   }
-  
+
   // 片段模式：截取指定范围
   const startPos = Math.max(0, keywordIndex - range)
   const endPos = Math.min(textContent.length, keywordIndex + keyword.length + range)
-  
+
   // 提取片段文本
   let snippetText = textContent.slice(startPos, endPos)
-  
+
   // 添加省略号
   if (startPos > 0) snippetText = '...' + snippetText
   if (endPos < textContent.length) snippetText = snippetText + '...'
-  
+
   // 转换为HTML并高亮
   const snippetHtml = textToHtml(snippetText)
   return highlightHtml(snippetHtml, keyword, props.isExact)
@@ -164,14 +164,14 @@ function getHtmlFragment(
  */
 function highlightHtml(html: string, keyword: string, isExact: boolean): string {
   if (!html || !keyword) return html
-  
+
   // 创建临时DOM
   const div = document.createElement('div')
   div.innerHTML = html
-  
+
   // 遍历所有文本节点并高亮
   highlightTextNodes(div, keyword, isExact)
-  
+
   return div.innerHTML
 }
 
@@ -182,11 +182,11 @@ function highlightTextNodes(node: Node, keyword: string, isExact: boolean): void
   if (node.nodeType === Node.TEXT_NODE) {
     const text = node.textContent || ''
     if (!text.trim()) return
-    
+
     const highlighted = isExact
       ? highlightExactText(text, keyword)
       : highlightIntervalText(text, keyword)
-    
+
     if (highlighted !== text) {
       const span = document.createElement('span')
       span.innerHTML = highlighted
@@ -195,7 +195,7 @@ function highlightTextNodes(node: Node, keyword: string, isExact: boolean): void
   } else if (node.nodeType === Node.ELEMENT_NODE) {
     // 跳过已经是mark标签的节点
     if ((node as Element).tagName === 'MARK') return
-    
+
     // 递归处理子节点（需要复制数组，因为会修改DOM）
     const children = Array.from(node.childNodes)
     children.forEach(child => highlightTextNodes(child, keyword, isExact))
@@ -210,7 +210,7 @@ function highlightExactText(text: string, keyword: string): string {
   const lowerKeyword = keyword.toLowerCase()
   const parts: string[] = []
   let lastIndex = 0
-  
+
   let index = lowerText.indexOf(lowerKeyword)
   while (index !== -1) {
     // 添加匹配前的文本
@@ -222,12 +222,12 @@ function highlightExactText(text: string, keyword: string): string {
     lastIndex = index + keyword.length
     index = lowerText.indexOf(lowerKeyword, lastIndex)
   }
-  
+
   // 添加剩余文本
   if (lastIndex < text.length) {
     parts.push(escapeHtml(text.slice(lastIndex)))
   }
-  
+
   return parts.join('')
 }
 
@@ -238,7 +238,7 @@ function highlightIntervalText(text: string, keyword: string): string {
   const lowerKeyword = keyword.toLowerCase()
   const queryChars = new Set(lowerKeyword.split(''))
   let result = ''
-  
+
   for (const char of text) {
     if (queryChars.has(char.toLowerCase())) {
       result += `<mark class="highlight">${escapeHtml(char)}</mark>`
@@ -246,7 +246,7 @@ function highlightIntervalText(text: string, keyword: string): string {
       result += escapeHtml(char)
     }
   }
-  
+
   return result
 }
 
@@ -270,19 +270,19 @@ function escapeHtml(text: string): string {
 const highlightedHtml = computed(() => {
   // 1. 获取基础HTML（优先使用htmlContent，否则从content生成）
   let baseHtml = currentDocument.value?.htmlContent || ''
-  
+
   // 如果没有htmlContent，从纯文本content生成
   if (!baseHtml && currentDocument.value?.content) {
     baseHtml = textToHtml(currentDocument.value.content)
   }
-  
+
   if (!baseHtml) return '<div class="text-gray-400 py-4">无内容可显示</div>'
-  
+
   // 2. 纯净模式：去除颜色样式，但保留结构
   if (!showOriginal.value) {
     baseHtml = stripStyles(baseHtml)
   }
-  
+
   // 3. 应用搜索高亮
   if (!isFullMode.value) {
     // 片段模式：截取并高亮
@@ -329,10 +329,10 @@ watch(() => props.result, (newVal) => {
   if (newVal) {
     // 重置为片段模式
     isFullMode.value = false
-    
-    // 如果文档支持原始样式，默认显示原始样式；否则显示纯净文本
-    showOriginal.value = supportsOriginalStyles.value
-    
+
+    // 默认显示纯净样式（更适合阅读和高亮）
+    showOriginal.value = false
+
     // 滚动到顶部
     nextTick(() => {
       if (scrollContainer.value) {
@@ -375,107 +375,75 @@ const swipeStyle = computed(() => {
   <Teleport to="body">
     <!-- 遮罩层 -->
     <Transition name="fade">
-      <div
-        v-if="visible"
-        class="fixed inset-0 bg-black/20 z-40 backdrop-blur-sm"
-        @click="close"
-      />
+      <div v-if="visible" class="fixed inset-0 bg-black/20 z-40 backdrop-blur-sm" @click="close" />
     </Transition>
-    
+
     <!-- 弹窗内容 -->
     <Transition name="slide-up">
-      <div
-        v-if="visible"
-        ref="modalContainer"
-        class="fixed inset-0 z-50 flex flex-col bg-white transition-all duration-100"
-        :style="swipeStyle"
-      >
+      <div v-if="visible" ref="modalContainer"
+        class="fixed inset-0 z-50 flex flex-col bg-white transition-all duration-100" :style="swipeStyle">
         <!-- Header -->
-        <div class="h-14 px-4 border-b border-slate-100 flex items-center justify-between bg-white/90 backdrop-blur z-10 shrink-0">
+        <div
+          class="h-14 px-4 border-b border-slate-100 flex items-center justify-between bg-white/90 backdrop-blur z-10 shrink-0">
           <!-- 关闭按钮 -->
-          <button
-            @click="close"
-            class="p-2 -ml-2 text-slate-500 hover:text-slate-800 transition-colors"
-          >
+          <button @click="close" class="p-2 -ml-2 text-slate-500 hover:text-slate-800 transition-colors">
             <KeyboardArrowDownOutlined class="w-6 h-6" />
           </button>
-          
+
           <!-- 文件名 -->
           <h2 class="text-sm font-bold text-slate-800 truncate flex-1 min-w-0 mx-2">
             {{ fileName }}
           </h2>
-          
+
           <!-- 工具栏 -->
           <div class="flex items-center gap-1 shrink-0">
             <!-- 字体大小滑块 -->
             <div class="h-8 flex items-center gap-1.5 bg-slate-50 px-2 rounded-full border border-slate-100">
               <TextFieldsOutlined class="w-4 h-4 text-slate-400" />
-              <input
-                type="range"
-                v-model.number="currentFontSize"
-                :min="appStore.config.minFontSize"
+              <input type="range" v-model.number="currentFontSize" :min="appStore.config.minFontSize"
                 :max="appStore.config.maxFontSize"
-                class="w-16 h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer"
-              />
+                class="w-16 h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer" />
               <TextFieldsOutlined class="w-5 h-5 text-slate-500" />
             </div>
-            
+
             <!-- 全文/片段模式切换 -->
-            <button
-              @click="isFullMode = !isFullMode"
+            <button @click="isFullMode = !isFullMode"
               class="h-8 px-3 flex items-center gap-1.5 rounded-full border transition-all"
               :class="isFullMode
                 ? 'bg-indigo-50 text-indigo-600 border-indigo-100'
-                : 'bg-slate-50 text-slate-500 border-slate-100 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-100'"
-              :title="isFullMode ? '当前为全文模式，点击切换到片段模式' : '当前为片段模式，点击切换到全文模式'"
-            >
+                : 'bg-slate-50 text-slate-500 border-slate-100 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-100'" :title="isFullMode ? '当前为全文模式，点击切换到片段模式' : '当前为片段模式，点击切换到全文模式'">
               <MenuBookOutlined v-if="isFullMode" class="w-4 h-4" />
               <ContentCutOutlined v-else class="w-4 h-4" />
               {{ isFullMode ? '全文' : '片段' }}
             </button>
-            
+
             <!-- 原版/纯净样式切换 -->
-            <button
-              @click="showOriginal = !showOriginal"
-              :disabled="!supportsOriginalStyles"
-              class="h-8 w-8 flex items-center justify-center rounded-full transition-all border"
-              :class="[
-                supportsOriginalStyles
-                  ? showOriginal
-                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-md'
-                    : 'bg-slate-100 text-slate-500 border-transparent hover:text-indigo-600 hover:bg-indigo-50 hover:border-indigo-100'
-                  : 'bg-slate-100 text-slate-300 border-transparent cursor-not-allowed opacity-50'
-              ]"
-              :title="!supportsOriginalStyles
-                ? '该文档不支持原始样式预览'
-                : showOriginal
-                  ? '显示纯净文本(支持高亮)'
-                  : '显示原版样式(背景/颜色)'"
-            >
+            <button @click="showOriginal = !showOriginal"
+              class="h-8 w-8 flex items-center justify-center rounded-full transition-all border" :class="[
+                showOriginal
+                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-md'
+                  : 'bg-slate-100 text-slate-500 border-transparent hover:text-indigo-600 hover:bg-indigo-50 hover:border-indigo-100'
+              ]" :title="showOriginal
+                ? '显示纯净文本'
+                : '显示原版样式'">
               <FormatPaintOutlined class="w-5 h-5" />
             </button>
           </div>
         </div>
-        
+
         <!-- Content -->
         <div class="flex-1 p-5 pr-1 relative bg-white overflow-hidden">
-          <div
-            ref="scrollContainer"
-            class="w-full h-full pr-4 overflow-y-auto custom-scrollbar"
-          >
+          <div ref="scrollContainer" class="w-full h-full pr-4 overflow-y-auto custom-scrollbar">
             <!-- Loading -->
             <div v-if="loading" class="flex justify-center py-10">
               <div class="animate-spin w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full" />
             </div>
-            
+
             <!-- 内容区域 -->
-            <div
-              v-else
+            <div v-else
               class="doc-content-render max-w-none text-slate-700 leading-8 whitespace-pre-wrap wrap-break-word font-sans transition-all"
-              :style="{ fontSize: currentFontSize + 'px', lineHeight: '1.6' }"
-              v-html="displayContent"
-            />
-            
+              :style="{ fontSize: currentFontSize + 'px', lineHeight: '1.6' }" v-html="displayContent" />
+
             <!-- 底部留白 -->
             <div class="h-40" />
           </div>

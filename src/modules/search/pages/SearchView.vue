@@ -17,7 +17,8 @@ import {
   TextFieldsOutlined,
   ChevronLeftOutlined,
   ChevronRightOutlined,
-  ExpandMoreOutlined
+  ExpandMoreOutlined,
+  RefreshOutlined
 } from '@vicons/material'
 
 const documentStore = useDocumentStore()
@@ -156,7 +157,7 @@ onMounted(async () => {
         <button @click="handleUseExtractedItem"
           class="w-8 h-9 flex items-center justify-center text-indigo-600 transition-all active:scale-90"
           title="重新应用当前选中内容">
-          <i class="ph-bold ph-arrows-clockwise"></i>
+          <RefreshOutlined class="w-5 h-5" />
         </button>
 
         <button @click="nextExtractedItem"

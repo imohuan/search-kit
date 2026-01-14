@@ -95,8 +95,8 @@ export function getCellIndices(cell: CharCell): number[] {
 
 export function useExtractor() {
   const store = useExtractorStore();
-  const { showToast } = useToast();
-  const { showConfirm } = useConfirm();
+  const { show: showToast } = useToast();
+  const { confirm: showConfirm } = useConfirm();
   const { text: clipboardText, copy: copyToClipboard } = useClipboard();
 
   // 编辑中的项目索引，-1表示新建模式

@@ -50,7 +50,7 @@ function handleDragOver(e: DragEvent) {
 function handleDrop(e: DragEvent) {
   e.preventDefault()
   isDragging.value = false
-  
+
   const files = e.dataTransfer?.files
   if (files && files.length > 0) {
     emit('upload', files)
@@ -72,23 +72,10 @@ function handleFileChange(e: Event) {
 </script>
 
 <template>
-  <label
-    class="file-uploader"
-    :class="{ 'is-dragging': isDragging, 'is-uploading': uploading }"
-    @dragenter="handleDragEnter"
-    @dragleave="handleDragLeave"
-    @dragover="handleDragOver"
-    @drop="handleDrop"
-  >
-    <input
-      ref="fileInputRef"
-      type="file"
-      multiple
-      accept=".pdf,.docx,.txt"
-      class="hidden"
-      @change="handleFileChange"
-    >
-    
+  <label class="file-uploader" :class="{ 'is-dragging': isDragging, 'is-uploading': uploading }"
+    @dragenter="handleDragEnter" @dragleave="handleDragLeave" @dragover="handleDragOver" @drop="handleDrop">
+    <input ref="fileInputRef" type="file" multiple accept=".pdf,.docx,.txt" class="hidden" @change="handleFileChange">
+
     <!-- 上传中状态 -->
     <template v-if="uploading">
       <div class="upload-progress">
@@ -96,7 +83,7 @@ function handleFileChange(e: Event) {
       </div>
       <p class="text-slate-500 text-sm mt-2">上传中... {{ progress }}%</p>
     </template>
-    
+
     <!-- 默认状态 -->
     <template v-else>
       <div class="upload-icon-container">
@@ -130,12 +117,12 @@ function handleFileChange(e: Event) {
 }
 
 .upload-icon-container {
-  @apply w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center;
+  @apply w-10 h-10 rounded-full flex items-center justify-center;
   @apply transition-colors duration-200;
 }
 
 .file-uploader:hover .upload-icon-container {
-  @apply bg-indigo-200;
+  @apply text-indigo-200;
 }
 
 .upload-icon {
