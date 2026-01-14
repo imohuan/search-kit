@@ -27,6 +27,7 @@ export interface SearchResult {
   content: string;
   matchIndex: number; // 匹配起始位置
   matchLength: number; // 匹配跨度长度
+  matchPositions: number[]; // 精确的匹配字符位置数组
   highlightedSnippet: string;
 }
 

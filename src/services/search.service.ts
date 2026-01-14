@@ -50,6 +50,7 @@ class SearchService {
           content: doc.content,
           matchIndex: match.index,
           matchLength: match.length,
+          matchPositions: match.positions, // 保存精确的匹配位置
           highlightedSnippet,
         });
       }
