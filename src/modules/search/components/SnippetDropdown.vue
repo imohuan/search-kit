@@ -19,27 +19,24 @@ const emit = defineEmits<{
 }>()
 
 /**
- * 获取反转后的列表（按显示索引降序排列，1 在最上面）
+ * 获取显示列表（extractedList 已经是最新在前，直接使用）
  */
-const reversedItems = computed(() => {
-  return [...props.items].reverse()
+const displayItems = computed(() => {
+  return props.items
 })
 
 /**
  * 检查是否为当前选中项
- * currentIndex 是显示索引（0 表示最新的项）
- * reversedIndex 是反转后列表的索引（0 是显示索引最大的项）
  */
-function isCurrentItem(reversedIndex: number): boolean {
-  return reversedIndex === props.currentIndex
+function isCurrentItem(index: number): boolean {
+  return index === props.currentIndex
 }
 
 /**
  * 处理项目点击
- * reversedIndex 是反转后列表的索引，直接对应显示索引
  */
-function handleItemClick(reversedIndex: number) {
-  emit('select', reversedIndex)
+function handleItemClick(index: number) {
+  emit('select', index)
   emit('close')
 }
 
@@ -73,7 +70,7 @@ function truncateText(text: string, maxLength = 30): string {
 
           <!-- 提取项列表 -->
           <div class="item-list">
-            <div v-for="(item, index) in reversedItems" :key="index" class="item"
+            <div v-for="(item, index) in displayItems" :key="index" class="item"
               :class="{ active: isCurrentItem(index) }" @click="handleItemClick(index)">
               <!-- 序号 -->
               <span class="item-index">

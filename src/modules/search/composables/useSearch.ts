@@ -59,9 +59,9 @@ export function useSearch() {
   // 当前选中的提取项
   const currentExtractedItem = computed<ExtractedItem | null>(() => {
     if (extractedItems.value.length === 0) return null;
-    // 反转顺序显示（最新的在前）
-    const reversedIndex = extractedItems.value.length - 1 - currentExtractedIndex.value;
-    return extractedItems.value[reversedIndex] ?? null;
+    // extractedItems 已经是最新在前的顺序（store 中 unshift 添加）
+    // currentExtractedIndex 直接对应数组索引
+    return extractedItems.value[currentExtractedIndex.value] ?? null;
   });
 
   // 是否有提取项
@@ -193,33 +193,46 @@ export function useSearch() {
   // ============ 提取器分页方法 ============
 
   /**
-   * 切换到上一个提取项（显示索引减少：2 → 1）
-   * 显示索引减少意味着 currentExtractedIndex 减少
+   * 切换到上一个提取项并应用到搜索框
    */
   function prevExtractedItem() {
     if (extractedItems.value.length === 0) return;
     if (currentExtractedIndex.value > 0) {
       currentExtractedIndex.value--;
+      // 自动应用到搜索框
+      if (currentExtractedItem.value) {
+        query.value = currentExtractedItem.value.text;
+        performSearch();
+      }
     }
   }
 
   /**
-   * 切换到下一个提取项（显示索引增加：1 → 2）
-   * 显示索引增加意味着 currentExtractedIndex 增加
+   * 切换到下一个提取项并应用到搜索框
    */
   function nextExtractedItem() {
     if (extractedItems.value.length === 0) return;
     if (currentExtractedIndex.value < extractedItems.value.length - 1) {
       currentExtractedIndex.value++;
+      // 自动应用到搜索框
+      if (currentExtractedItem.value) {
+        query.value = currentExtractedItem.value.text;
+        performSearch();
+      }
     }
   }
 
   /**
-   * 跳转到指定提取项
+   * 跳转到指定提取项并应用到搜索框
    */
   function goToExtractedItem(index: number) {
     if (index >= 0 && index < extractedItems.value.length) {
       currentExtractedIndex.value = index;
+      // 将选中的提取项文本应用到搜索框
+      if (currentExtractedItem.value) {
+        query.value = currentExtractedItem.value.text;
+        performSearch();
+      }
     }
   }
 
