@@ -79,6 +79,7 @@ export interface ExtractorState {
   extractedList: ExtractedItem[];
   selectedIndices: number[];
   hideSpaces: boolean;
+  previewMode: "full" | "simple" | "off"; // 预览模式：完整/简洁/关闭
 }
 
 // ============ App Config Types ============

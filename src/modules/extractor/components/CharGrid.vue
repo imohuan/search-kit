@@ -5,8 +5,8 @@
  *
  * 功能:
  * - 显示字符网格，支持连续数字字母合并显示
- * - 使用 inline-block 布局，自然换行
- * - 空格不显示方格，仅保留间距
+ * - 使用 CSS 变量优化性能，避免重复计算样式
+ * - 支持三种预览模式：full（完整）、simple（简洁）、off（关闭）
  */
 import { computed } from 'vue'
 import { useAppStore } from '@/stores/app.store'
@@ -16,6 +16,7 @@ const props = defineProps<{
   charList: CharCell[]
   selectedIndices: Set<number>
   hideSpaces: boolean
+  previewMode: 'full' | 'simple' | 'off'
   extractedList: Array<{ indices: number[]; color: string }>
 }>()
 
@@ -29,6 +30,31 @@ const appStore = useAppStore()
 
 // 统一的字符尺寸
 const cellSize = computed(() => appStore.config.charGridWidth)
+
+// 生成 CSS 变量样式（用于完整预览模式）
+const cssVariables = computed(() => {
+  const vars: Record<string, string> = {}
+  props.extractedList.forEach((item, idx) => {
+    const color = item.color || '#6366f1'
+    vars[`--ext-bg-${idx}`] = color + '33'
+    vars[`--ext-border-${idx}`] = color + '66'
+    vars[`--ext-color-${idx}`] = color
+  })
+  return vars
+})
+
+// 预计算：字符索引 -> 提取项索引的映射
+const charToExtractedMap = computed(() => {
+  const map = new Map<number, number>()
+  props.extractedList.forEach((item, idx) => {
+    if (item?.indices) {
+      for (const charIdx of item.indices) {
+        map.set(charIdx, idx)
+      }
+    }
+  })
+  return map
+})
 
 /**
  * 获取CharCell覆盖的所有原始索引
@@ -53,42 +79,11 @@ function isCellSelected(cell: CharCell): boolean {
 }
 
 /**
- * 检查字符索引是否在已提取列表中，返回项目索引（-1表示未提取）
+ * 获取字符的提取项索引（-1 表示未提取）
  */
-function getExtractedItemIndex(charIndex: number): number {
-  for (let i = 0; i < props.extractedList.length; i++) {
-    const item = props.extractedList[i]
-    if (item && item.indices && item.indices.includes(charIndex)) {
-      return i
-    }
-  }
-  return -1
-}
-
-/**
- * 获取已提取项的颜色
- */
-function getExtractedColor(itemIndex: number): string {
-  if (itemIndex < 0 || itemIndex >= props.extractedList.length) {
-    return '#6366f1'
-  }
-  const item = props.extractedList[itemIndex]
-  return item?.color || '#6366f1'
-}
-
-/**
- * 获取已提取字符的样式（带透明度）
- */
-function getExtractedStyle(cell: CharCell): Record<string, string> {
-  const itemIndex = getExtractedItemIndex(cell.index)
-  if (itemIndex === -1) return {}
-
-  const color = getExtractedColor(itemIndex)
-  return {
-    backgroundColor: color + '33',
-    borderColor: color + '66',
-    color: color
-  }
+function getExtractedIndex(charIndex: number): number {
+  if (props.previewMode === 'off') return -1
+  return charToExtractedMap.value.get(charIndex) ?? -1
 }
 
 /**
@@ -106,12 +101,10 @@ function isNewline(cell: CharCell): boolean {
 }
 
 /**
- * 是否显示单元格（空格和换行符特殊处理）
+ * 是否显示单元格
  */
 function shouldShowCell(cell: CharCell): boolean {
-  // 换行符始终显示（作为换行）
   if (isNewline(cell)) return true
-  // 空格：如果隐藏空格则不显示
   if (isSpace(cell) && props.hideSpaces) return false
   return true
 }
@@ -125,17 +118,40 @@ function getDisplayText(cell: CharCell): string {
   }
   return cell.char
 }
+
+/**
+ * 获取单元格的 class
+ */
+function getCellClass(cell: CharCell): string[] {
+  const classes: string[] = []
+  const extIdx = getExtractedIndex(cell.index)
+
+  if (isCellSelected(cell)) {
+    classes.push('cell-selected')
+  } else if (extIdx !== -1) {
+    if (props.previewMode === 'simple') {
+      classes.push('cell-extracted-simple')
+    } else {
+      // 完整模式：使用 CSS 变量的 class
+      classes.push('cell-extracted', `ext-${extIdx}`)
+    }
+  } else {
+    classes.push('cell-default')
+  }
+
+  return classes
+}
 </script>
 
 <template>
-  <div class="h-full overflow-y-auto p-3 bg-white scrollbar-hide char-grid">
+  <div class="h-full overflow-y-auto p-3 bg-white scrollbar-hide char-grid" :style="cssVariables">
     <div class="leading-relaxed select-none pb-24" @touchstart.passive="$emit('touchstart', $event)"
       @touchmove.prevent="$emit('touchmove', $event)" @touchend.passive="$emit('touchend')">
       <template v-for="(cell, idx) in charList" :key="idx">
-        <!-- 换行符：使用 br 实现真正换行 -->
+        <!-- 换行符 -->
         <br v-if="isNewline(cell)" />
 
-        <!-- 空格：仅显示间距，不显示方格 -->
+        <!-- 空格 -->
         <span v-else-if="isSpace(cell) && shouldShowCell(cell)" class="inline-block w-2" />
 
         <!-- 普通字符/组合字符 -->
@@ -143,33 +159,272 @@ function getDisplayText(cell: CharCell): string {
           :data-grouped="cell.isGrouped ? 'true' : undefined"
           :data-group-length="cell.isGrouped && cell.groupText ? cell.groupText.length : undefined"
           class="char-cell inline-flex items-center justify-center rounded font-medium cursor-pointer select-none border m-0.5 align-middle relative"
-          :class="[
-            isCellSelected(cell)
-              ? 'bg-indigo-600 border-indigo-600 text-white scale-105 shadow-sm z-10'
-              : getExtractedItemIndex(cell.index) !== -1
-                ? 'border-slate-200 z-5'
-                : 'bg-slate-50 border-slate-100/80 text-slate-600'
-          ]" :style="{
+          :class="getCellClass(cell)" :style="{
             width: cell.isGrouped && cell.groupText
               ? `${cellSize * Math.min(cell.groupText.length, 2.5)}px`
               : `${cellSize}px`,
             height: `${cellSize}px`,
-            fontSize: '13px',
-            ...(!isCellSelected(cell) && getExtractedItemIndex(cell.index) !== -1 ? getExtractedStyle(cell) : {})
+            fontSize: '13px'
           }">
           {{ getDisplayText(cell) }}
 
-          <!-- 已提取项的序号标注 -->
-          <span v-if="!isCellSelected(cell) && getExtractedItemIndex(cell.index) !== -1"
-            class="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full text-[9px] font-black flex items-center justify-center shadow-sm"
-            :style="{
-              backgroundColor: getExtractedColor(getExtractedItemIndex(cell.index)),
-              color: 'white'
-            }">
-            {{ extractedList.length - getExtractedItemIndex(cell.index) }}
+          <!-- 序号标注 - 仅完整模式 -->
+          <span v-if="previewMode === 'full' && !isCellSelected(cell) && getExtractedIndex(cell.index) !== -1"
+            class="extracted-badge" :class="`badge-${getExtractedIndex(cell.index)}`">
+            {{ extractedList.length - getExtractedIndex(cell.index) }}
           </span>
         </span>
       </template>
     </div>
   </div>
 </template>
+
+<style scoped>
+/* 选中状态 */
+.cell-selected {
+  background-color: #4f46e5;
+  border-color: #4f46e5;
+  color: white;
+  transform: scale(1.05);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+  z-index: 10;
+}
+
+/* 默认状态 */
+.cell-default {
+  background-color: rgb(248 250 252);
+  border-color: rgb(241 245 249 / 0.8);
+  color: rgb(71 85 105);
+}
+
+/* 简洁预览模式 - 统一淡紫色背景 */
+.cell-extracted-simple {
+  background-color: rgb(199 210 254 / 0.5);
+  border-color: rgb(165 180 252 / 0.6);
+  color: #4f46e5;
+}
+
+/* 完整预览模式 - 使用 CSS 变量 */
+.cell-extracted {
+  z-index: 5;
+}
+
+/* 为每个提取项生成样式（最多支持 20 个） */
+.ext-0 {
+  background-color: var(--ext-bg-0);
+  border-color: var(--ext-border-0);
+  color: var(--ext-color-0);
+}
+
+.ext-1 {
+  background-color: var(--ext-bg-1);
+  border-color: var(--ext-border-1);
+  color: var(--ext-color-1);
+}
+
+.ext-2 {
+  background-color: var(--ext-bg-2);
+  border-color: var(--ext-border-2);
+  color: var(--ext-color-2);
+}
+
+.ext-3 {
+  background-color: var(--ext-bg-3);
+  border-color: var(--ext-border-3);
+  color: var(--ext-color-3);
+}
+
+.ext-4 {
+  background-color: var(--ext-bg-4);
+  border-color: var(--ext-border-4);
+  color: var(--ext-color-4);
+}
+
+.ext-5 {
+  background-color: var(--ext-bg-5);
+  border-color: var(--ext-border-5);
+  color: var(--ext-color-5);
+}
+
+.ext-6 {
+  background-color: var(--ext-bg-6);
+  border-color: var(--ext-border-6);
+  color: var(--ext-color-6);
+}
+
+.ext-7 {
+  background-color: var(--ext-bg-7);
+  border-color: var(--ext-border-7);
+  color: var(--ext-color-7);
+}
+
+.ext-8 {
+  background-color: var(--ext-bg-8);
+  border-color: var(--ext-border-8);
+  color: var(--ext-color-8);
+}
+
+.ext-9 {
+  background-color: var(--ext-bg-9);
+  border-color: var(--ext-border-9);
+  color: var(--ext-color-9);
+}
+
+.ext-10 {
+  background-color: var(--ext-bg-10);
+  border-color: var(--ext-border-10);
+  color: var(--ext-color-10);
+}
+
+.ext-11 {
+  background-color: var(--ext-bg-11);
+  border-color: var(--ext-border-11);
+  color: var(--ext-color-11);
+}
+
+.ext-12 {
+  background-color: var(--ext-bg-12);
+  border-color: var(--ext-border-12);
+  color: var(--ext-color-12);
+}
+
+.ext-13 {
+  background-color: var(--ext-bg-13);
+  border-color: var(--ext-border-13);
+  color: var(--ext-color-13);
+}
+
+.ext-14 {
+  background-color: var(--ext-bg-14);
+  border-color: var(--ext-border-14);
+  color: var(--ext-color-14);
+}
+
+.ext-15 {
+  background-color: var(--ext-bg-15);
+  border-color: var(--ext-border-15);
+  color: var(--ext-color-15);
+}
+
+.ext-16 {
+  background-color: var(--ext-bg-16);
+  border-color: var(--ext-border-16);
+  color: var(--ext-color-16);
+}
+
+.ext-17 {
+  background-color: var(--ext-bg-17);
+  border-color: var(--ext-border-17);
+  color: var(--ext-color-17);
+}
+
+.ext-18 {
+  background-color: var(--ext-bg-18);
+  border-color: var(--ext-border-18);
+  color: var(--ext-color-18);
+}
+
+.ext-19 {
+  background-color: var(--ext-bg-19);
+  border-color: var(--ext-border-19);
+  color: var(--ext-color-19);
+}
+
+/* 序号标注 */
+.extracted-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  font-size: 9px;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+  color: white;
+}
+
+/* 序号标注颜色 */
+.badge-0 {
+  background-color: var(--ext-color-0);
+}
+
+.badge-1 {
+  background-color: var(--ext-color-1);
+}
+
+.badge-2 {
+  background-color: var(--ext-color-2);
+}
+
+.badge-3 {
+  background-color: var(--ext-color-3);
+}
+
+.badge-4 {
+  background-color: var(--ext-color-4);
+}
+
+.badge-5 {
+  background-color: var(--ext-color-5);
+}
+
+.badge-6 {
+  background-color: var(--ext-color-6);
+}
+
+.badge-7 {
+  background-color: var(--ext-color-7);
+}
+
+.badge-8 {
+  background-color: var(--ext-color-8);
+}
+
+.badge-9 {
+  background-color: var(--ext-color-9);
+}
+
+.badge-10 {
+  background-color: var(--ext-color-10);
+}
+
+.badge-11 {
+  background-color: var(--ext-color-11);
+}
+
+.badge-12 {
+  background-color: var(--ext-color-12);
+}
+
+.badge-13 {
+  background-color: var(--ext-color-13);
+}
+
+.badge-14 {
+  background-color: var(--ext-color-14);
+}
+
+.badge-15 {
+  background-color: var(--ext-color-15);
+}
+
+.badge-16 {
+  background-color: var(--ext-color-16);
+}
+
+.badge-17 {
+  background-color: var(--ext-color-17);
+}
+
+.badge-18 {
+  background-color: var(--ext-color-18);
+}
+
+.badge-19 {
+  background-color: var(--ext-color-19);
+}
+</style>

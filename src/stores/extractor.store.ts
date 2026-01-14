@@ -34,6 +34,7 @@ const defaultState: ExtractorState = {
   extractedList: [],
   selectedIndices: [],
   hideSpaces: false,
+  previewMode: "full",
 };
 
 /**
@@ -75,6 +76,14 @@ export const useExtractorStore = defineStore("extractor", () => {
     get: () => storageState.value.hideSpaces,
     set: (val) => {
       storageState.value.hideSpaces = val;
+    },
+  });
+
+  // 预览模式：full（完整）、simple（简洁）、off（关闭）
+  const previewMode = computed({
+    get: () => storageState.value.previewMode ?? "full",
+    set: (val) => {
+      storageState.value.previewMode = val;
     },
   });
 
@@ -220,6 +229,7 @@ export const useExtractorStore = defineStore("extractor", () => {
     innerTab,
     rawText,
     hideSpaces,
+    previewMode,
     extractedList,
     selectedIndicesSet,
 

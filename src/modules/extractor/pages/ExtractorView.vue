@@ -17,6 +17,7 @@ const {
   innerTab,
   rawText,
   hideSpaces,
+  previewMode,
   charList,
   extractedList,
   selectedIndices,
@@ -29,7 +30,6 @@ const {
   onGridTouchStart,
   onGridTouchMove,
   onGridTouchEnd,
-  pasteFromClipboard,
   clearSymbols,
   selectAll,
   invertSelection,
@@ -43,9 +43,9 @@ const selectedCount = computed(() => selectedIndices.value.size)
 // 提取项数量
 const extractedCount = computed(() => extractedList.value.length)
 
-// 切换隐藏空格
-function toggleHideSpaces() {
-  hideSpaces.value = !hideSpaces.value
+// 设置预览模式
+function setPreviewMode(mode: 'full' | 'simple' | 'off') {
+  previewMode.value = mode
 }
 
 // 清空选择
@@ -98,8 +98,8 @@ const extractedListForGrid = computed(() => {
       <div class="flex-1 overflow-hidden relative">
         <!-- 选字面板 -->
         <CharGrid v-show="innerTab === 'select'" :char-list="charList" :selected-indices="selectedIndices"
-          :hide-spaces="hideSpaces" :extracted-list="extractedListForGrid" @touchstart="onGridTouchStart"
-          @touchmove="onGridTouchMove" @touchend="onGridTouchEnd" />
+          :hide-spaces="hideSpaces" :preview-mode="previewMode" :extracted-list="extractedListForGrid"
+          @touchstart="onGridTouchStart" @touchmove="onGridTouchMove" @touchend="onGridTouchEnd" />
 
         <!-- 结果面板 -->
         <ExtractedList v-show="innerTab === 'list'" :extracted-list="extractedList" @edit="editItem" @copy="copyItem"
@@ -107,9 +107,9 @@ const extractedListForGrid = computed(() => {
       </div>
 
       <!-- 底部工具栏 -->
-      <ExtractorToolbar :inner-tab="innerTab" :hide-spaces="hideSpaces" :selected-count="selectedCount"
+      <ExtractorToolbar :inner-tab="innerTab" :preview-mode="previewMode" :selected-count="selectedCount"
         :extracted-count="extractedCount" :editing-index="editingIndex" @back="backToInput"
-        @toggle-hide-spaces="toggleHideSpaces" @clear-symbols="clearSymbols" @select-all="selectAll"
+        @set-preview-mode="setPreviewMode" @clear-symbols="clearSymbols" @select-all="selectAll"
         @invert-selection="invertSelection" @clear-selection="clearSelection" @extract="handleAction"
         @clear-all-results="clearAllResults" />
     </div>

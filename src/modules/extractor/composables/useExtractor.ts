@@ -493,6 +493,12 @@ export function useExtractor() {
         store.hideSpaces = val;
       },
     }),
+    previewMode: computed({
+      get: () => store.previewMode,
+      set: (val) => {
+        store.previewMode = val;
+      },
+    }),
     charList,
     simpleCharList,
     extractedList: computed(() => store.extractedList),
