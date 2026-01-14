@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * 提取结果列表组件
- * Requirements: 4.5
+ * Requirements: 6.7
  *
  * 显示已提取的文字列表，最新的在前面
  */

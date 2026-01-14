@@ -13,7 +13,7 @@ import type { SearchResult, Document } from '@/types'
 import {
   KeyboardArrowDownOutlined,
   TextFieldsOutlined,
-  AutoStoriesOutlined,
+  MenuBookOutlined,
   ContentCutOutlined,
   FormatPaintOutlined
 } from '@vicons/material'
@@ -59,6 +59,11 @@ const currentDocument = computed<Document | null>(() => {
 // 文件名
 const fileName = computed(() => {
   return props.result?.fileName ?? currentDocument.value?.fileName ?? '未知文档'
+})
+
+// 是否支持原始样式
+const supportsOriginalStyles = computed(() => {
+  return currentDocument.value?.hasOriginalStyles ?? false
 })
 
 /**
@@ -324,7 +329,9 @@ watch(() => props.result, (newVal) => {
   if (newVal) {
     // 重置为片段模式
     isFullMode.value = false
-    showOriginal.value = true
+    
+    // 如果文档支持原始样式，默认显示原始样式；否则显示纯净文本
+    showOriginal.value = supportsOriginalStyles.value
     
     // 滚动到顶部
     nextTick(() => {
@@ -384,33 +391,33 @@ const swipeStyle = computed(() => {
         :style="swipeStyle"
       >
         <!-- Header -->
-        <div class="h-14 px-4 border-b border-gray-100 flex items-center justify-between bg-white/90 backdrop-blur z-10 shrink-0">
+        <div class="h-14 px-4 border-b border-slate-100 flex items-center justify-between bg-white/90 backdrop-blur z-10 shrink-0">
           <!-- 关闭按钮 -->
           <button
             @click="close"
-            class="p-2 -ml-2 text-gray-500 hover:text-gray-800 transition-colors"
+            class="p-2 -ml-2 text-slate-500 hover:text-slate-800 transition-colors"
           >
             <KeyboardArrowDownOutlined class="w-6 h-6" />
           </button>
           
           <!-- 文件名 -->
-          <h2 class="text-sm font-bold text-gray-800 truncate flex-1 min-w-0 mx-2">
+          <h2 class="text-sm font-bold text-slate-800 truncate flex-1 min-w-0 mx-2">
             {{ fileName }}
           </h2>
           
           <!-- 工具栏 -->
           <div class="flex items-center gap-1 shrink-0">
             <!-- 字体大小滑块 -->
-            <div class="h-8 flex items-center gap-1.5 bg-gray-50 px-2 rounded-full border border-gray-100">
-              <TextFieldsOutlined class="w-4 h-4 text-gray-400" />
+            <div class="h-8 flex items-center gap-1.5 bg-slate-50 px-2 rounded-full border border-slate-100">
+              <TextFieldsOutlined class="w-4 h-4 text-slate-400" />
               <input
                 type="range"
                 v-model.number="currentFontSize"
                 :min="appStore.config.minFontSize"
                 :max="appStore.config.maxFontSize"
-                class="w-16 h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                class="w-16 h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer"
               />
-              <TextFieldsOutlined class="w-5 h-5 text-gray-500" />
+              <TextFieldsOutlined class="w-5 h-5 text-slate-500" />
             </div>
             
             <!-- 全文/片段模式切换 -->
@@ -418,11 +425,11 @@ const swipeStyle = computed(() => {
               @click="isFullMode = !isFullMode"
               class="h-8 px-3 flex items-center gap-1.5 rounded-full border transition-all"
               :class="isFullMode
-                ? 'bg-blue-50 text-blue-600 border-blue-100'
-                : 'bg-gray-50 text-gray-500 border-gray-100 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-100'"
+                ? 'bg-indigo-50 text-indigo-600 border-indigo-100'
+                : 'bg-slate-50 text-slate-500 border-slate-100 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-100'"
               :title="isFullMode ? '当前为全文模式，点击切换到片段模式' : '当前为片段模式，点击切换到全文模式'"
             >
-              <AutoStoriesOutlined v-if="isFullMode" class="w-4 h-4" />
+              <MenuBookOutlined v-if="isFullMode" class="w-4 h-4" />
               <ContentCutOutlined v-else class="w-4 h-4" />
               {{ isFullMode ? '全文' : '片段' }}
             </button>
@@ -430,11 +437,20 @@ const swipeStyle = computed(() => {
             <!-- 原版/纯净样式切换 -->
             <button
               @click="showOriginal = !showOriginal"
+              :disabled="!supportsOriginalStyles"
               class="h-8 w-8 flex items-center justify-center rounded-full transition-all border"
-              :class="showOriginal
-                ? 'bg-blue-600 text-white border-blue-600 shadow-md'
-                : 'bg-gray-100 text-gray-500 border-transparent hover:text-blue-600 hover:bg-blue-50 hover:border-blue-100'"
-              :title="showOriginal ? '显示纯净文本(支持高亮)' : '显示原版样式(背景/颜色)'"
+              :class="[
+                supportsOriginalStyles
+                  ? showOriginal
+                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-md'
+                    : 'bg-slate-100 text-slate-500 border-transparent hover:text-indigo-600 hover:bg-indigo-50 hover:border-indigo-100'
+                  : 'bg-slate-100 text-slate-300 border-transparent cursor-not-allowed opacity-50'
+              ]"
+              :title="!supportsOriginalStyles
+                ? '该文档不支持原始样式预览'
+                : showOriginal
+                  ? '显示纯净文本(支持高亮)'
+                  : '显示原版样式(背景/颜色)'"
             >
               <FormatPaintOutlined class="w-5 h-5" />
             </button>
@@ -449,13 +465,13 @@ const swipeStyle = computed(() => {
           >
             <!-- Loading -->
             <div v-if="loading" class="flex justify-center py-10">
-              <div class="animate-spin w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full" />
+              <div class="animate-spin w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full" />
             </div>
             
             <!-- 内容区域 -->
             <div
               v-else
-              class="doc-content-render max-w-none text-gray-700 leading-8 whitespace-pre-wrap break-words font-sans transition-all"
+              class="doc-content-render max-w-none text-slate-700 leading-8 whitespace-pre-wrap wrap-break-word font-sans transition-all"
               :style="{ fontSize: currentFontSize + 'px', lineHeight: '1.6' }"
               v-html="displayContent"
             />
@@ -514,7 +530,7 @@ const swipeStyle = computed(() => {
 
 /* 滑块样式 */
 input[type="range"]::-webkit-slider-thumb {
-  @apply appearance-none w-3 h-3 bg-blue-500 rounded-full cursor-pointer;
+  @apply appearance-none w-3 h-3 bg-indigo-500 rounded-full cursor-pointer;
 }
 
 /* 文档内容渲染样式 */

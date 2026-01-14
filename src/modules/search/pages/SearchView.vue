@@ -14,7 +14,6 @@ import SnippetDropdown from '../components/SnippetDropdown.vue'
 import DetailModal from '@/components/modal/DetailModal.vue'
 import type { SearchResult } from '@/types'
 import {
-  FilterListOutlined,
   TextFieldsOutlined,
   ChevronLeftOutlined,
   ChevronRightOutlined,
@@ -41,7 +40,6 @@ const {
   currentExtractedIndex,
   currentExtractedItem,
   hasExtractedItems,
-  extractedPagination,
   showSnippetDropdown,
   
   // 搜索方法
@@ -115,25 +113,15 @@ onMounted(async () => {
         v-model="query"
         :is-exact="isExact"
         :is-searching="isSearching"
+        :is-filter-active="selectedDocIds.size < documentStore.documentCount"
         @update:is-exact="isExact = $event"
         @search="performSearch"
         @clear="clearSearch"
+        @open-filter="openDocFilter"
       />
       
       <!-- 工具栏 -->
       <div class="toolbar">
-        <!-- 文档筛选按钮 -->
-        <button
-          class="tool-btn"
-          @click="openDocFilter"
-          :title="`已选 ${selectedDocIds.size} 个文档`"
-        >
-          <FilterListOutlined class="w-5 h-5" />
-          <span class="badge" v-if="selectedDocIds.size < documentStore.documentCount">
-            {{ selectedDocIds.size }}
-          </span>
-        </button>
-        
         <!-- 字体大小调节 -->
         <div class="font-size-control">
           <TextFieldsOutlined class="w-4 h-4 text-gray-400" />
@@ -159,53 +147,60 @@ onMounted(async () => {
       @result-click="handleResultClick"
     />
     
-    <!-- 底部提取项分页控制 -->
-    <div v-if="hasExtractedItems" class="extractor-pagination">
-      <!-- 上一个 -->
-      <button
-        class="page-btn"
-        :disabled="currentExtractedIndex >= extractedItems.length - 1"
-        @click="prevExtractedItem"
-      >
-        <ChevronLeftOutlined class="w-5 h-5" />
-      </button>
-      
-      <!-- 当前提取项 -->
-      <button
-        class="current-item"
-        @click="openSnippetDropdown"
-      >
-        <span
-          v-if="currentExtractedItem"
-          class="item-text"
-          :style="{ backgroundColor: currentExtractedItem.color }"
+    <!-- 底部辅助栏 (分页 + 字体滑块 + 剪切板) -->
+    <div v-if="hasExtractedItems" class="px-3 py-2 border-t border-slate-100 flex items-center gap-2 bg-white/95 backdrop-blur-sm shrink-0 h-[52px]">
+      <!-- 提取项分页控制 -->
+      <div class="flex items-center bg-slate-100 rounded-xl border border-slate-200 flex-1 min-w-0 shadow-sm overflow-hidden">
+        <button
+          @click="prevExtractedItem"
+          class="w-8 h-9 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-white transition-all active:scale-90"
+          :disabled="currentExtractedIndex >= extractedItems.length - 1"
         >
-          {{ currentExtractedItem.text }}
-        </span>
-        <ExpandMoreOutlined class="w-4 h-4 text-gray-400" />
-      </button>
-      
-      <!-- 下一个 -->
-      <button
-        class="page-btn"
-        :disabled="currentExtractedIndex <= 0"
-        @click="nextExtractedItem"
-      >
-        <ChevronRightOutlined class="w-5 h-5" />
-      </button>
-      
-      <!-- 使用按钮 -->
-      <button
-        class="use-btn"
-        @click="handleUseExtractedItem"
-      >
-        搜索
-      </button>
-      
-      <!-- 分页信息 -->
-      <span class="page-info">
-        {{ extractedPagination.current }}/{{ extractedPagination.total }}
-      </span>
+          <ChevronLeftOutlined class="w-5 h-5" />
+        </button>
+        
+        <!-- 下拉选择触发器 -->
+        <div
+          @click="openSnippetDropdown"
+          class="px-2 flex-1 min-w-0 h-9 flex items-center justify-center text-[10px] font-black text-indigo-600 cursor-pointer transition-colors group"
+        >
+          <span class="bg-indigo-600 text-white px-1.5 py-0.5 rounded-md mr-1.5 scale-90 shrink-0">
+            {{ currentExtractedIndex + 1 }}
+          </span>
+          <span class="truncate">{{ currentExtractedItem?.text || '---' }}</span>
+          <ExpandMoreOutlined class="w-4 h-4 ml-1 text-slate-400 opacity-40 group-hover:opacity-100 transition-opacity" />
+        </div>
+
+        <!-- 重新应用按钮 -->
+        <button
+          @click="handleUseExtractedItem"
+          class="w-8 h-9 flex items-center justify-center text-indigo-600 transition-all active:scale-90"
+          title="重新应用当前选中内容"
+        >
+          <i class="ph-bold ph-arrows-clockwise"></i>
+        </button>
+
+        <button
+          @click="nextExtractedItem"
+          class="w-8 h-9 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-white transition-all active:scale-90"
+          :disabled="currentExtractedIndex <= 0"
+        >
+          <ChevronRightOutlined class="w-5 h-5" />
+        </button>
+      </div>
+
+      <!-- 字体控制 -->
+      <div class="flex items-center gap-2 flex-1 min-w-0 bg-slate-50 px-3 h-9 rounded-xl border border-slate-100">
+        <TextFieldsOutlined class="w-4 h-4 text-slate-400" />
+        <input
+          type="range"
+          v-model.number="fontSize"
+          :min="appStore.config.minFontSize"
+          :max="appStore.config.maxFontSize"
+          class="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+        />
+        <TextFieldsOutlined class="w-5 h-5 text-slate-600" />
+      </div>
     </div>
     
     <!-- 文档筛选弹窗 -->
@@ -258,20 +253,6 @@ onMounted(async () => {
   @apply flex items-center gap-3 mt-3;
 }
 
-.tool-btn {
-  @apply relative p-2 rounded-lg;
-  @apply text-gray-600 bg-gray-100;
-  @apply hover:bg-gray-200;
-  @apply transition-colors duration-200;
-}
-
-.badge {
-  @apply absolute -top-1 -right-1;
-  @apply w-4 h-4 flex items-center justify-center;
-  @apply text-[10px] font-medium text-white;
-  @apply bg-blue-500 rounded-full;
-}
-
 .font-size-control {
   @apply flex items-center gap-2 flex-1;
 }
@@ -285,47 +266,5 @@ onMounted(async () => {
   @apply appearance-none w-4 h-4;
   @apply bg-blue-500 rounded-full;
   @apply cursor-pointer;
-}
-
-/* 底部提取项分页 */
-.extractor-pagination {
-  @apply flex items-center gap-2 px-4 py-3;
-  @apply bg-white border-t border-gray-100;
-  @apply sticky bottom-14;
-}
-
-.page-btn {
-  @apply p-1.5 rounded-lg;
-  @apply text-gray-600 bg-gray-100;
-  @apply hover:bg-gray-200;
-  @apply disabled:opacity-50 disabled:cursor-not-allowed;
-  @apply transition-colors duration-200;
-}
-
-.current-item {
-  @apply flex-1 flex items-center justify-center gap-1;
-  @apply px-3 py-2 rounded-lg;
-  @apply bg-gray-100;
-  @apply hover:bg-gray-200;
-  @apply transition-colors duration-200;
-  @apply min-w-0;
-}
-
-.item-text {
-  @apply px-2 py-0.5 rounded;
-  @apply text-sm truncate;
-  @apply max-w-[150px];
-}
-
-.use-btn {
-  @apply px-3 py-1.5 rounded-lg;
-  @apply text-sm font-medium text-white;
-  @apply bg-blue-500 hover:bg-blue-600;
-  @apply transition-colors duration-200;
-}
-
-.page-info {
-  @apply text-xs text-gray-500;
-  @apply w-12 text-center;
 }
 </style>

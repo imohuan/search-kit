@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * 提取器工具栏组件
- * Requirements: 4.7
+ * Requirements: 6.6
  *
  * 提供选字操作的工具按钮：
  * - 隐藏空格切换

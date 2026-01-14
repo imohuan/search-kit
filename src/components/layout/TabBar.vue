@@ -2,9 +2,12 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { 
-  SearchOutlined, 
-  FolderOutlined, 
-  TextFieldsOutlined 
+  SearchOutlined,
+  SearchFilled,
+  LibraryBooksOutlined,
+  LibraryBooksFilled,
+  SelectAllOutlined,
+  SelectAllFilled
 } from '@vicons/material'
 import type { RouteName } from '@/types'
 
@@ -17,13 +20,29 @@ const router = useRouter()
 interface TabItem {
   name: RouteName
   label: string
-  icon: typeof SearchOutlined
+  iconOutlined: typeof SearchOutlined
+  iconFilled: typeof SearchFilled
 }
 
 const tabs: TabItem[] = [
-  { name: 'search', label: '搜索', icon: SearchOutlined },
-  { name: 'library', label: '文档库', icon: FolderOutlined },
-  { name: 'extractor', label: '提取器', icon: TextFieldsOutlined }
+  { 
+    name: 'search', 
+    label: '智能搜索', 
+    iconOutlined: SearchOutlined,
+    iconFilled: SearchFilled
+  },
+  { 
+    name: 'library', 
+    label: '文档库', 
+    iconOutlined: LibraryBooksOutlined,
+    iconFilled: LibraryBooksFilled
+  },
+  { 
+    name: 'extractor', 
+    label: '选字提取', 
+    iconOutlined: SelectAllOutlined,
+    iconFilled: SelectAllFilled
+  }
 ]
 
 /**
@@ -44,14 +63,21 @@ function switchTab(name: RouteName) {
  * 获取Tab样式
  */
 function getTabClass(name: RouteName) {
-  const base = 'flex-1 flex flex-col items-center justify-center gap-0.5 py-1 transition-colors'
+  const base = 'flex-1 flex flex-col items-center justify-center gap-0.5 py-1 transition-all active:scale-95'
   const isActive = activeTab.value === name
-  return `${base} ${isActive ? 'text-blue-500' : 'text-gray-500'}`
+  return `${base} ${isActive ? 'text-indigo-600' : 'text-slate-400'}`
+}
+
+/**
+ * 获取Tab图标组件
+ */
+function getTabIcon(tab: TabItem) {
+  return activeTab.value === tab.name ? tab.iconFilled : tab.iconOutlined
 }
 </script>
 
 <template>
-  <nav class="fixed bottom-0 left-0 right-0 h-14 bg-white border-t border-gray-200 z-100 flex">
+  <nav class="fixed bottom-0 left-0 right-0 h-[60px] bg-white border-t border-slate-200 z-100 flex">
     <button
       v-for="tab in tabs"
       :key="tab.name"
@@ -60,7 +86,7 @@ function getTabClass(name: RouteName) {
       :aria-label="tab.label"
       :aria-current="activeTab === tab.name ? 'page' : undefined"
     >
-      <component :is="tab.icon" class="w-5 h-5" />
+      <component :is="getTabIcon(tab)" class="w-6 h-6" />
       <span class="text-xs">{{ tab.label }}</span>
     </button>
   </nav>

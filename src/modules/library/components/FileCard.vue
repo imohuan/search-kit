@@ -1,9 +1,10 @@
 <script setup lang="ts">
 /**
  * 文档卡片组件
- * Requirements: 3.3, 3.6
+ * Requirements: 5.3, 5.4, 5.5, 5.6
  */
 import type { Document } from '@/types'
+import { DescriptionOutlined, DeleteOutlined } from '@vicons/material'
 
 const props = defineProps<{
   document: Document
@@ -13,19 +14,6 @@ const emit = defineEmits<{
   click: [doc: Document]
   delete: [doc: Document]
 }>()
-
-/**
- * 获取文件图标
- */
-function getFileIcon(fileName: string): string {
-  const ext = fileName.split('.').pop()?.toLowerCase() || ''
-  const icons: Record<string, string> = {
-    pdf: '📄',
-    docx: '📝',
-    txt: '📃'
-  }
-  return icons[ext] || '📄'
-}
 
 /**
  * 格式化日期
@@ -41,14 +29,10 @@ function formatDate(date: Date): string {
 }
 
 /**
- * 获取内容预览
+ * 获取内容大小（单位：k字）
  */
-function getPreview(content: string, maxLength = 80): string {
-  const text = content.replace(/\s+/g, ' ').trim()
-  if (text.length <= maxLength) {
-    return text
-  }
-  return text.slice(0, maxLength) + '...'
+function getContentSize(content: string): string {
+  return (content.length / 1000).toFixed(1)
 }
 
 /**
@@ -65,34 +49,27 @@ function handleDelete(e: Event) {
     class="file-card"
     @click="emit('click', document)"
   >
-    <!-- 文件图标和名称 -->
-    <div class="flex items-start gap-3">
-      <span class="text-2xl shrink-0">{{ getFileIcon(document.fileName) }}</span>
+    <!-- 文件图标和信息 -->
+    <div class="flex items-center gap-3 flex-1 overflow-hidden">
+      <div class="file-icon-container">
+        <DescriptionOutlined class="file-icon" />
+      </div>
       <div class="flex-1 min-w-0">
-        <h3 class="font-medium text-gray-900 truncate">
-          {{ document.fileName }}
-        </h3>
-        <p class="text-xs text-gray-400 mt-0.5">
-          {{ formatDate(document.date) }}
+        <h4 class="file-name">{{ document.fileName }}</h4>
+        <p class="file-meta">
+          {{ formatDate(document.date) }} · {{ getContentSize(document.content) }}k 字
         </p>
       </div>
-      
-      <!-- 删除按钮 -->
-      <button
-        class="delete-btn"
-        title="删除文档"
-        @click="handleDelete"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-        </svg>
-      </button>
     </div>
     
-    <!-- 内容预览 -->
-    <p class="text-sm text-gray-500 mt-2 line-clamp-2">
-      {{ getPreview(document.content) }}
-    </p>
+    <!-- 删除按钮 -->
+    <button
+      class="delete-btn"
+      title="删除文档"
+      @click="handleDelete"
+    >
+      <DeleteOutlined class="delete-icon" />
+    </button>
   </div>
 </template>
 
@@ -100,30 +77,38 @@ function handleDelete(e: Event) {
 @reference "@/style.css";
 
 .file-card {
-  @apply bg-white rounded-xl p-4 shadow-sm;
-  @apply border border-gray-100;
+  @apply bg-white p-3 rounded-xl border border-slate-100 shadow-sm;
+  @apply flex items-center justify-between;
   @apply cursor-pointer transition-all duration-200;
+  @apply active:bg-slate-50;
 }
 
-.file-card:hover {
-  @apply shadow-md border-gray-200;
+.file-icon-container {
+  @apply w-10 h-10 rounded-lg bg-indigo-50;
+  @apply flex items-center justify-center;
+  @apply text-indigo-600 shrink-0;
 }
 
-.file-card:active {
-  @apply scale-[0.98];
+.file-icon {
+  @apply text-xl;
+}
+
+.file-name {
+  @apply text-sm font-bold text-slate-700 truncate;
+}
+
+.file-meta {
+  @apply text-xs text-slate-400 mt-0.5;
 }
 
 .delete-btn {
-  @apply p-1.5 rounded-lg text-gray-400;
-  @apply hover:text-red-500 hover:bg-red-50;
+  @apply p-2 text-slate-300;
+  @apply hover:text-red-500;
   @apply transition-colors duration-200;
   @apply shrink-0;
 }
 
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+.delete-icon {
+  @apply text-lg;
 }
 </style>

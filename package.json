@@ -24,6 +24,7 @@
     "@vicons/material": "^0.13.0",
     "@vueuse/core": "^14.1.0",
     "dexie": "^4.2.1",
+    "jszip": "^3.10.1",
     "lodash-es": "^4.17.21",
     "mammoth": "^1.11.0",
     "mitt": "^3.0.1",

@@ -1,9 +1,10 @@
 <script setup lang="ts">
 /**
  * 文件上传组件 - 拖拽上传区域
- * Requirements: 3.1, 3.3
+ * Requirements: 5.1, 5.2
  */
 import { ref } from 'vue'
+import { CloudUploadOutlined } from '@vicons/material'
 
 const emit = defineEmits<{
   upload: [files: FileList]
@@ -57,13 +58,6 @@ function handleDrop(e: DragEvent) {
 }
 
 /**
- * 点击选择文件
- */
-function handleClick() {
-  fileInputRef.value?.click()
-}
-
-/**
  * 处理文件选择
  */
 function handleFileChange(e: Event) {
@@ -78,14 +72,13 @@ function handleFileChange(e: Event) {
 </script>
 
 <template>
-  <div
+  <label
     class="file-uploader"
     :class="{ 'is-dragging': isDragging, 'is-uploading': uploading }"
     @dragenter="handleDragEnter"
     @dragleave="handleDragLeave"
     @dragover="handleDragOver"
     @drop="handleDrop"
-    @click="handleClick"
   >
     <input
       ref="fileInputRef"
@@ -101,60 +94,59 @@ function handleFileChange(e: Event) {
       <div class="upload-progress">
         <div class="progress-bar" :style="{ width: `${progress}%` }" />
       </div>
-      <p class="text-gray-500 text-sm mt-2">上传中... {{ progress }}%</p>
+      <p class="text-slate-500 text-sm mt-2">上传中... {{ progress }}%</p>
     </template>
     
     <!-- 默认状态 -->
     <template v-else>
-      <div class="upload-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
-        </svg>
+      <div class="upload-icon-container">
+        <CloudUploadOutlined class="upload-icon" />
       </div>
-      <p class="text-gray-600 text-sm mt-2">
-        {{ isDragging ? '松开以上传文件' : '点击或拖拽文件到此处' }}
+      <p class="text-slate-700 text-sm font-semibold mt-2">
+        {{ isDragging ? '松开以上传文件' : '点击上传文档' }}
       </p>
-      <p class="text-gray-400 text-xs mt-1">支持 PDF、DOCX、TXT 格式</p>
+      <p class="text-slate-400 text-xs mt-1">支持 PDF、DOCX、TXT 格式</p>
     </template>
-  </div>
+  </label>
 </template>
 
 <style scoped>
 @reference "@/style.css";
 
 .file-uploader {
-  @apply border-2 border-dashed border-gray-300 rounded-xl p-6;
-  @apply flex flex-col items-center justify-center;
-  @apply cursor-pointer transition-all duration-200;
-  @apply min-h-[140px];
-}
-
-.file-uploader:hover {
-  @apply border-blue-400 bg-blue-50/50;
+  @apply flex flex-col items-center justify-center w-full h-32;
+  @apply border-2 border-dashed border-slate-200 rounded-2xl;
+  @apply cursor-pointer bg-slate-50;
+  @apply hover:bg-indigo-50 hover:border-indigo-300;
+  @apply transition-colors duration-200;
 }
 
 .file-uploader.is-dragging {
-  @apply border-blue-500 bg-blue-50;
+  @apply border-indigo-500 bg-indigo-50;
 }
 
 .file-uploader.is-uploading {
-  @apply cursor-default border-gray-300 bg-gray-50;
+  @apply cursor-default border-slate-200 bg-slate-50;
+}
+
+.upload-icon-container {
+  @apply w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center;
+  @apply transition-colors duration-200;
+}
+
+.file-uploader:hover .upload-icon-container {
+  @apply bg-indigo-200;
 }
 
 .upload-icon {
-  @apply text-gray-400;
-}
-
-.file-uploader:hover .upload-icon,
-.file-uploader.is-dragging .upload-icon {
-  @apply text-blue-500;
+  @apply text-indigo-600 text-xl;
 }
 
 .upload-progress {
-  @apply w-full max-w-[200px] h-2 bg-gray-200 rounded-full overflow-hidden;
+  @apply w-full max-w-[200px] h-2 bg-slate-200 rounded-full overflow-hidden;
 }
 
 .progress-bar {
-  @apply h-full bg-blue-500 transition-all duration-300;
+  @apply h-full bg-indigo-500 transition-all duration-300;
 }
 </style>

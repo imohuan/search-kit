@@ -1,9 +1,9 @@
 <script setup lang="ts">
 /**
  * 文本输入区域组件
- * Requirements: 4.1
+ * Requirements: 6.1, 6.2, 6.3
  */
-import { TextFieldsOutlined, TouchAppOutlined, ContentPasteOutlined } from '@vicons/material'
+import { TouchAppOutlined, ContentPasteOutlined } from '@vicons/material'
 
 defineProps<{
   modelValue: string
@@ -25,7 +25,7 @@ function handleInput(e: Event) {
   <div class="p-4 h-full flex flex-col space-y-2 overflow-y-auto scrollbar-hide">
     <div class="flex-1 flex flex-col gap-2">
       <label class="text-sm font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-        <TextFieldsOutlined class="w-4 h-4 text-indigo-500" />
+        <i class="ph-fill ph-text-aa text-indigo-500"></i>
         原始文本内容
       </label>
       <textarea
@@ -47,7 +47,7 @@ function handleInput(e: Event) {
       <button
         @click="$emit('paste')"
         class="px-4 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-        title="从剪切板写入"
+        title="从剪切板粘贴"
       >
         <ContentPasteOutlined class="w-5 h-5" />
         粘贴

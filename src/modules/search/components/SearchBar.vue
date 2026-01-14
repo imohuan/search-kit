@@ -1,14 +1,15 @@
 <script setup lang="ts">
 /**
  * 搜索框组件
- * Requirements: 2.1, 2.2
+ * Requirements: 4.1, 4.2, 4.3, 4.4
  */
-import { SearchOutlined, CloseOutlined } from '@vicons/material'
+import { FilterAltOutlined, GpsFixedOutlined, CancelOutlined } from '@vicons/material'
 
 const props = defineProps<{
   modelValue: string
   isExact: boolean
   isSearching?: boolean
+  isFilterActive?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -16,6 +17,7 @@ const emit = defineEmits<{
   'update:isExact': [value: boolean]
   search: []
   clear: []
+  'open-filter': []
 }>()
 
 /**
@@ -49,87 +51,62 @@ function handleClear() {
 function toggleExact() {
   emit('update:isExact', !props.isExact)
 }
+
+/**
+ * 打开文档筛选
+ */
+function openFilter() {
+  emit('open-filter')
+}
 </script>
 
 <template>
-  <div class="search-bar">
-    <!-- 搜索图标 -->
-    <SearchOutlined class="search-icon" />
+  <div class="relative">
+    <!-- 左侧筛选按钮 -->
+    <button
+      @click="openFilter"
+      class="absolute inset-y-0 left-0 pl-3.5 flex items-center z-10 transition-colors"
+      :class="isFilterActive ? 'text-indigo-600' : 'text-slate-400 hover:text-indigo-500'"
+      title="配置搜索文档"
+    >
+      <FilterAltOutlined class="w-5 h-5" />
+    </button>
     
     <!-- 输入框 -->
     <input
       type="text"
-      class="search-input"
+      class="block w-full pl-11 pr-24 py-3 bg-slate-100 border-transparent text-slate-900 placeholder-slate-400 rounded-xl focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none transition-all text-sm font-medium"
       placeholder="输入关键词搜索..."
       :value="modelValue"
       @input="handleInput"
       @keydown="handleKeydown"
     />
     
-    <!-- 清空按钮 -->
-    <button
-      v-if="modelValue"
-      class="clear-btn"
-      @click="handleClear"
-      aria-label="清空"
-    >
-      <CloseOutlined class="w-4 h-4" />
-    </button>
-    
-    <!-- 精确搜索切换 -->
-    <button
-      class="exact-btn"
-      :class="{ active: isExact }"
-      @click="toggleExact"
-      :title="isExact ? '精确搜索已开启' : '点击开启精确搜索'"
-    >
-      精确
-    </button>
+    <!-- 右侧按钮组 -->
+    <div class="absolute inset-y-0 right-0 pr-3 flex items-center gap-1">
+      <!-- 精确搜索切换 -->
+      <button
+        @click="toggleExact"
+        class="p-1.5 rounded-lg transition-all"
+        :class="isExact ? 'text-indigo-600' : 'text-slate-400 hover:text-indigo-500'"
+        :title="isExact ? '精确搜索：开启' : '精确搜索：关闭'"
+      >
+        <GpsFixedOutlined class="w-5 h-5" />
+      </button>
+      
+      <!-- 清除按钮 -->
+      <button
+        v-if="modelValue"
+        @click="handleClear"
+        class="p-1.5 text-slate-400 hover:text-red-500 transition-colors"
+        aria-label="清空"
+      >
+        <CancelOutlined class="w-5 h-5" />
+      </button>
+    </div>
   </div>
 </template>
 
 <style scoped>
-@reference "@/style.css";
-
-.search-bar {
-  @apply flex items-center gap-2 px-3 py-2;
-  @apply bg-gray-100 rounded-xl;
-  @apply transition-all duration-200;
-}
-
-.search-bar:focus-within {
-  @apply bg-white ring-2 ring-blue-500/30;
-}
-
-.search-icon {
-  @apply w-5 h-5 text-gray-400 shrink-0;
-}
-
-.search-input {
-  @apply flex-1 bg-transparent outline-none;
-  @apply text-gray-800 placeholder-gray-400;
-  @apply text-base;
-}
-
-.clear-btn {
-  @apply p-1 rounded-full text-gray-400;
-  @apply hover:text-gray-600 hover:bg-gray-200;
-  @apply transition-colors duration-200;
-  @apply shrink-0;
-}
-
-.exact-btn {
-  @apply px-2 py-1 text-xs font-medium rounded-md;
-  @apply text-gray-500 bg-gray-200;
-  @apply transition-all duration-200;
-  @apply shrink-0;
-}
-
-.exact-btn.active {
-  @apply text-white bg-blue-500;
-}
-
-.exact-btn:hover:not(.active) {
-  @apply bg-gray-300;
-}
+/* 样式已内联到模板中，无需额外样式 */
 </style>

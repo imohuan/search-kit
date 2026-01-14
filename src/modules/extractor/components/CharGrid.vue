@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * 字符网格组件
- * Requirements: 4.2, 4.3
+ * Requirements: 6.4, 6.5
  *
  * 功能:
  * - 显示字符网格，支持连续数字字母合并显示
