@@ -51,16 +51,10 @@ function truncateText(text: string, maxLength = 30): string {
 <template>
   <Teleport to="body">
     <Transition name="dropdown">
-      <div
-        v-if="visible"
-        class="fixed inset-0 z-9999 flex items-end justify-center"
-      >
+      <div v-if="visible" class="fixed inset-0 z-9999 flex items-end justify-center">
         <!-- 遮罩层 -->
-        <div
-          class="absolute inset-0 bg-black/50"
-          @click="emit('close')"
-        />
-        
+        <div class="absolute inset-0 bg-black/50" @click="emit('close')" />
+
         <!-- 弹窗内容 -->
         <div class="dropdown-content">
           <!-- 标题栏 -->
@@ -68,44 +62,29 @@ function truncateText(text: string, maxLength = 30): string {
             <h3 class="text-lg font-medium text-gray-900">
               选择提取项
             </h3>
-            <button
-              class="close-btn"
-              @click="emit('close')"
-              aria-label="关闭"
-            >
+            <button class="close-btn" @click="emit('close')" aria-label="关闭">
               <CloseOutlined class="w-5 h-5" />
             </button>
           </div>
-          
+
           <!-- 提取项列表 -->
           <div class="item-list">
-            <div
-              v-for="(item, index) in items"
-              :key="index"
-              class="item"
-              :class="{ active: isCurrentItem(index) }"
-              @click="handleItemClick(index)"
-            >
+            <div v-for="(item, index) in items" :key="index" class="item" :class="{ active: isCurrentItem(index) }"
+              @click="handleItemClick(index)">
               <!-- 序号 -->
               <span class="item-index">
                 {{ getDisplayIndex(index) }}
               </span>
-              
+
               <!-- 文本内容 -->
-              <span
-                class="item-text"
-                :style="{ backgroundColor: item.color }"
-              >
+              <span class="item-text">
                 {{ truncateText(item.text) }}
               </span>
-              
+
               <!-- 选中标记 -->
-              <CheckOutlined
-                v-if="isCurrentItem(index)"
-                class="w-5 h-5 text-blue-500 shrink-0"
-              />
+              <CheckOutlined v-if="isCurrentItem(index)" class="w-5 h-5 text-blue-500 shrink-0" />
             </div>
-            
+
             <!-- 空状态 -->
             <div v-if="items.length === 0" class="empty-state">
               <p class="text-gray-500">暂无提取项</p>
@@ -143,23 +122,23 @@ function truncateText(text: string, maxLength = 30): string {
 }
 
 .item {
-  @apply flex items-center gap-3 px-3 py-3;
+  @apply flex items-center gap-3 px-3 py-1;
   @apply rounded-lg cursor-pointer;
   @apply transition-colors duration-200;
 }
 
 .item:hover {
-  @apply bg-gray-50;
+  @apply bg-gray-100;
 }
 
 .item.active {
-  @apply bg-blue-50;
+  @apply bg-blue-100;
 }
 
 .item-index {
   @apply w-6 h-6 flex items-center justify-center;
-  @apply text-xs font-medium text-gray-500;
-  @apply bg-gray-100 rounded-full;
+  @apply text-xs font-medium text-white;
+  @apply bg-indigo-600 rounded-md;
   @apply shrink-0;
 }
 

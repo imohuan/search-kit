@@ -8,6 +8,7 @@ import { useDebounceFn, useStorage } from "@vueuse/core";
 import { searchService } from "@/services/search.service";
 import { useDocumentStore } from "@/stores/document.store";
 import { useAppStore } from "@/stores/app.store";
+import { useExtractorStore } from "@/stores/extractor.store";
 import type { SearchResult, Document, ExtractedItem } from "@/types";
 
 /**
@@ -17,6 +18,7 @@ import type { SearchResult, Document, ExtractedItem } from "@/types";
 export function useSearch() {
   const documentStore = useDocumentStore();
   const appStore = useAppStore();
+  const extractorStore = useExtractorStore();
 
   // ============ 搜索状态 ============
   const query = ref("");
@@ -30,7 +32,8 @@ export function useSearch() {
   const showDocFilter = ref(false);
 
   // ============ 提取器分页状态 ============
-  const extractedItems = ref<ExtractedItem[]>([]);
+  // 从 extractorStore 读取提取项列表
+  const extractedItems = computed(() => extractorStore.extractedList);
   const currentExtractedIndex = ref(0);
   const showSnippetDropdown = ref(false);
 
@@ -190,14 +193,6 @@ export function useSearch() {
   // ============ 提取器分页方法 ============
 
   /**
-   * 设置提取项列表
-   */
-  function setExtractedItems(items: ExtractedItem[]) {
-    extractedItems.value = items;
-    currentExtractedIndex.value = 0;
-  }
-
-  /**
    * 切换到上一个提取项（反转顺序）
    */
   function prevExtractedItem() {
@@ -325,7 +320,6 @@ export function useSearch() {
     isDocSelected,
 
     // 提取器分页方法
-    setExtractedItems,
     prevExtractedItem,
     nextExtractedItem,
     goToExtractedItem,
