@@ -4,7 +4,7 @@
  * Requirements: 4.8
  */
 import type { Document } from '@/types'
-import { CloseOutlined, DescriptionOutlined, FilterListOutlined, FolderOpenOutlined } from '@vicons/material'
+import { CloseOutlined, DescriptionOutlined, FilterListOutlined } from '@vicons/material'
 
 const props = defineProps<{
   visible: boolean

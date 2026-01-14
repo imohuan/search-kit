@@ -29,9 +29,11 @@ const previewResult = computed<SearchResult | null>(() => {
   return {
     id: previewDocument.value.id,
     fileName: previewDocument.value.fileName,
-    snippet: '', // 文档库预览不需要片段
+    content: previewDocument.value.content,
     matchIndex: 0,
-    matchCount: 0
+    matchLength: 0,
+    matchPositions: [], // 文档库预览不需要高亮位置
+    highlightedSnippet: ''
   }
 })
 

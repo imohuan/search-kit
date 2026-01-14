@@ -65,9 +65,6 @@ const {
   openSnippetDropdown,
   closeSnippetDropdown,
 
-  // 字体大小方法
-  setFontSize,
-
   // 符号过滤方法
   toggleFilterSymbols
 } = useSearch()
