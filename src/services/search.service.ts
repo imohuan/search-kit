@@ -115,17 +115,25 @@ class SearchService {
 
     if (lowerQuery.length === 0) return matches;
 
-    // 从每个可能的起始位置开始搜索
+    const firstChar = lowerQuery[0];
+    if (!firstChar) return matches;
+
+    // 找到所有第一个字符出现的位置，从每个位置尝试匹配
     let searchStart = 0;
     while (searchStart < content.length) {
-      const match = this.findSingleIntervalMatch(lowerContent, lowerQuery, maxGap, searchStart);
+      // 先找到下一个第一个字符的位置
+      const firstCharPos = lowerContent.indexOf(firstChar, searchStart);
+      if (firstCharPos === -1) break;
 
-      if (!match) break;
+      // 从这个位置尝试匹配
+      const match = this.findSingleIntervalMatch(lowerContent, lowerQuery, maxGap, firstCharPos);
 
-      matches.push(match);
-      // 从第一个匹配字符的下一个位置继续搜索
-      const firstPos = match.positions[0];
-      searchStart = firstPos !== undefined ? firstPos + 1 : searchStart + 1;
+      if (match) {
+        matches.push(match);
+      }
+
+      // 无论是否匹配成功，都从下一个位置继续搜索
+      searchStart = firstCharPos + 1;
     }
 
     return matches;
