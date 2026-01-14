@@ -3,6 +3,7 @@
  * 提取项选择弹窗组件
  * Requirements: 2.8
  */
+import { computed } from 'vue'
 import type { ExtractedItem } from '@/types'
 import { CloseOutlined, CheckOutlined } from '@vicons/material'
 
@@ -18,24 +19,27 @@ const emit = defineEmits<{
 }>()
 
 /**
- * 获取显示索引（反转顺序）
+ * 获取反转后的列表（按显示索引降序排列，1 在最上面）
  */
-function getDisplayIndex(index: number): number {
-  return props.items.length - index
-}
+const reversedItems = computed(() => {
+  return [...props.items].reverse()
+})
 
 /**
  * 检查是否为当前选中项
+ * currentIndex 是显示索引（0 表示最新的项）
+ * reversedIndex 是反转后列表的索引（0 是显示索引最大的项）
  */
-function isCurrentItem(index: number): boolean {
-  return index === props.currentIndex
+function isCurrentItem(reversedIndex: number): boolean {
+  return reversedIndex === props.currentIndex
 }
 
 /**
  * 处理项目点击
+ * reversedIndex 是反转后列表的索引，直接对应显示索引
  */
-function handleItemClick(index: number) {
-  emit('select', index)
+function handleItemClick(reversedIndex: number) {
+  emit('select', reversedIndex)
   emit('close')
 }
 
@@ -69,11 +73,11 @@ function truncateText(text: string, maxLength = 30): string {
 
           <!-- 提取项列表 -->
           <div class="item-list">
-            <div v-for="(item, index) in items" :key="index" class="item" :class="{ active: isCurrentItem(index) }"
-              @click="handleItemClick(index)">
+            <div v-for="(item, index) in reversedItems" :key="index" class="item"
+              :class="{ active: isCurrentItem(index) }" @click="handleItemClick(index)">
               <!-- 序号 -->
               <span class="item-index">
-                {{ getDisplayIndex(index) }}
+                {{ index + 1 }}
               </span>
 
               <!-- 文本内容 -->

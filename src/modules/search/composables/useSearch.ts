@@ -193,24 +193,24 @@ export function useSearch() {
   // ============ 提取器分页方法 ============
 
   /**
-   * 切换到上一个提取项（反转顺序）
+   * 切换到上一个提取项（显示索引减少：2 → 1）
+   * 显示索引减少意味着 currentExtractedIndex 减少
    */
   function prevExtractedItem() {
     if (extractedItems.value.length === 0) return;
-    // 反转导航顺序
-    if (currentExtractedIndex.value < extractedItems.value.length - 1) {
-      currentExtractedIndex.value++;
+    if (currentExtractedIndex.value > 0) {
+      currentExtractedIndex.value--;
     }
   }
 
   /**
-   * 切换到下一个提取项（反转顺序）
+   * 切换到下一个提取项（显示索引增加：1 → 2）
+   * 显示索引增加意味着 currentExtractedIndex 增加
    */
   function nextExtractedItem() {
     if (extractedItems.value.length === 0) return;
-    // 反转导航顺序
-    if (currentExtractedIndex.value > 0) {
-      currentExtractedIndex.value--;
+    if (currentExtractedIndex.value < extractedItems.value.length - 1) {
+      currentExtractedIndex.value++;
     }
   }
 

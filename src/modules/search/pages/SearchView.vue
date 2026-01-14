@@ -127,7 +127,7 @@ onMounted(async () => {
         class="flex items-center bg-slate-100 rounded-xl border border-slate-200 flex-1 min-w-0 shadow-sm overflow-hidden">
         <button @click="prevExtractedItem"
           class="w-8 h-9 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-white transition-all active:scale-90"
-          :disabled="currentExtractedIndex >= extractedItems.length - 1">
+          :disabled="currentExtractedIndex <= 0">
           <ChevronLeftOutlined class="w-5 h-5" />
         </button>
 
@@ -151,7 +151,7 @@ onMounted(async () => {
 
         <button @click="nextExtractedItem"
           class="w-8 h-9 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-white transition-all active:scale-90"
-          :disabled="currentExtractedIndex <= 0">
+          :disabled="currentExtractedIndex >= extractedItems.length - 1">
           <ChevronRightOutlined class="w-5 h-5" />
         </button>
       </div>
