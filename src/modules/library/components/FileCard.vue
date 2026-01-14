@@ -45,10 +45,7 @@ function handleDelete(e: Event) {
 </script>
 
 <template>
-  <div
-    class="file-card"
-    @click="emit('click', document)"
-  >
+  <div class="file-card" @click="emit('click', document)">
     <!-- 文件图标和信息 -->
     <div class="flex items-center gap-3 flex-1 overflow-hidden">
       <div class="file-icon-container">
@@ -61,13 +58,9 @@ function handleDelete(e: Event) {
         </p>
       </div>
     </div>
-    
+
     <!-- 删除按钮 -->
-    <button
-      class="delete-btn"
-      title="删除文档"
-      @click="handleDelete"
-    >
+    <button class="delete-btn" title="删除文档" @click="handleDelete">
       <DeleteOutlined class="delete-icon" />
     </button>
   </div>
@@ -90,7 +83,7 @@ function handleDelete(e: Event) {
 }
 
 .file-icon {
-  @apply text-xl;
+  @apply size-5;
 }
 
 .file-name {

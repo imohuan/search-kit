@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { 
+import {
   SearchOutlined,
   SearchFilled,
   LibraryBooksOutlined,
@@ -25,21 +25,21 @@ interface TabItem {
 }
 
 const tabs: TabItem[] = [
-  { 
-    name: 'search', 
-    label: '智能搜索', 
+  {
+    name: 'search',
+    label: '智能搜索',
     iconOutlined: SearchOutlined,
     iconFilled: SearchFilled
   },
-  { 
-    name: 'library', 
-    label: '文档库', 
+  {
+    name: 'library',
+    label: '文档库',
     iconOutlined: LibraryBooksOutlined,
     iconFilled: LibraryBooksFilled
   },
-  { 
-    name: 'extractor', 
-    label: '选字提取', 
+  {
+    name: 'extractor',
+    label: '选字提取',
     iconOutlined: SelectAllOutlined,
     iconFilled: SelectAllFilled
   }
@@ -77,15 +77,9 @@ function getTabIcon(tab: TabItem) {
 </script>
 
 <template>
-  <nav class="fixed bottom-0 left-0 right-0 h-[60px] bg-white border-t border-slate-200 z-100 flex">
-    <button
-      v-for="tab in tabs"
-      :key="tab.name"
-      :class="getTabClass(tab.name)"
-      @click="switchTab(tab.name)"
-      :aria-label="tab.label"
-      :aria-current="activeTab === tab.name ? 'page' : undefined"
-    >
+  <nav class="h-14 bg-white border-t border-slate-200 z-20 flex">
+    <button v-for="tab in tabs" :key="tab.name" :class="getTabClass(tab.name)" @click="switchTab(tab.name)"
+      :aria-label="tab.label" :aria-current="activeTab === tab.name ? 'page' : undefined">
       <component :is="getTabIcon(tab)" class="w-6 h-6" />
       <span class="text-xs">{{ tab.label }}</span>
     </button>

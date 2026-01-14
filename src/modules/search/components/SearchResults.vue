@@ -5,6 +5,7 @@
  */
 import type { SearchResult } from '@/types'
 import ResultCard from './ResultCard.vue'
+import { SearchOffFilled, SentimentDissatisfiedOutlined } from '@vicons/material'
 
 defineProps<{
   results: SearchResult[]
@@ -25,35 +26,30 @@ const emit = defineEmits<{
       <div class="spinner" />
       <span class="text-gray-500">搜索中...</span>
     </div>
-    
+
     <!-- 空状态 - 无搜索词 -->
     <div v-else-if="!query?.trim()" class="empty-state">
-      <span class="text-4xl mb-2">🔍</span>
+      <SearchOffFilled class="text-gray-400 mb-2 size-20" />
       <p class="text-gray-500">输入关键词开始搜索</p>
     </div>
-    
+
     <!-- 空状态 - 无结果 -->
     <div v-else-if="results.length === 0" class="empty-state">
-      <span class="text-4xl mb-2">😕</span>
+      <SentimentDissatisfiedOutlined class="text-gray-400 mb-2 size-20" />
       <p class="text-gray-500">未找到匹配结果</p>
       <p class="text-gray-400 text-sm mt-1">试试其他关键词</p>
     </div>
-    
+
     <!-- 结果列表 -->
     <div v-else class="results-list">
       <!-- 结果数量 -->
       <div class="result-count">
         找到 <span class="font-medium text-blue-600">{{ results.length }}</span> 条结果
       </div>
-      
+
       <!-- 结果卡片 -->
-      <ResultCard
-        v-for="(result, index) in results"
-        :key="`${result.id}-${result.matchIndex}-${index}`"
-        :result="result"
-        :font-size="fontSize"
-        @click="emit('result-click', result)"
-      />
+      <ResultCard v-for="(result, index) in results" :key="`${result.id}-${result.matchIndex}-${index}`"
+        :result="result" :font-size="fontSize" @click="emit('result-click', result)" />
     </div>
   </div>
 </template>

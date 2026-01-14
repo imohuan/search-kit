@@ -22,13 +22,13 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="app-container">
+  <div class="app-container flex flex-col">
     <!-- 顶部导航栏 -->
     <NavBar />
-    
+
     <!-- 主内容区域 (带keep-alive缓存) -->
     <!-- Requirements: 9.3 - 使用Vue的keep-alive缓存视图组件 -->
-    <main class="flex-1 overflow-hidden relative">
+    <div class="flex-1 h-full overflow-hidden relative">
       <router-view v-slot="{ Component }">
         <transition name="fade" mode="out-in">
           <keep-alive>
@@ -36,11 +36,11 @@ onMounted(async () => {
           </keep-alive>
         </transition>
       </router-view>
-    </main>
-    
+    </div>
+
     <!-- 底部Tab栏 -->
     <TabBar />
-    
+
     <!-- 全局弹窗组件 -->
     <ToastMessage />
     <ConfirmModal />
@@ -49,9 +49,10 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+@reference "@/style.css";
+
 /* 主内容区域样式 */
 main {
-  padding-top: 3.5rem; /* NavBar高度 */
-  padding-bottom: 3.5rem; /* TabBar高度 */
+  @apply pt-14 pb-14;
 }
 </style>
