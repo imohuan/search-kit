@@ -9,7 +9,7 @@
  * - 列表顺序反转（最新在前）
  */
 
-import { computed, ref, watch } from "vue";
+import { computed, ref } from "vue";
 import { useClipboard } from "@vueuse/core";
 import { useExtractorStore } from "@/stores/extractor.store";
 import { useToast } from "@/composables/useToast";
@@ -35,7 +35,7 @@ export function generateCharList(text: string): CharCell[] {
   let i = 0;
 
   while (i < text.length) {
-    const char = text[i];
+    const char = text[i] ?? "";
 
     // 检查是否为可组合字符（数字或字母）
     if (isGroupableChar(char)) {
@@ -44,9 +44,14 @@ export function generateCharList(text: string): CharCell[] {
       const startIndex = i;
       i++;
 
-      while (i < text.length && isGroupableChar(text[i])) {
-        groupText += text[i];
-        i++;
+      while (i < text.length) {
+        const nextChar = text[i];
+        if (nextChar && isGroupableChar(nextChar)) {
+          groupText += nextChar;
+          i++;
+        } else {
+          break;
+        }
       }
 
       // 如果组长度大于1，创建组合单元格
@@ -192,7 +197,7 @@ export function useExtractor() {
       color:
         editingIndex.value === -1
           ? store.getColor(store.extractedList.length)
-          : store.extractedList[editingIndex.value].color,
+          : store.extractedList[editingIndex.value]?.color || store.getColor(editingIndex.value),
     };
 
     if (editingIndex.value === -1) {
@@ -216,8 +221,10 @@ export function useExtractor() {
   function editItem(index: number): void {
     editingIndex.value = index;
     const item = store.extractedList[index];
-    store.setSelectedIndices(new Set(item.indices));
-    store.innerTab = "select";
+    if (item) {
+      store.setSelectedIndices(new Set(item.indices));
+      store.innerTab = "select";
+    }
   }
 
   /**
@@ -246,6 +253,8 @@ export function useExtractor() {
    */
   function onGridTouchStart(e: TouchEvent): void {
     const touch = e.touches[0];
+    if (!touch) return;
+
     const el = document.elementFromPoint(touch.clientX, touch.clientY) as HTMLElement | null;
     const indexStr = el?.dataset?.index;
 
@@ -255,7 +264,19 @@ export function useExtractor() {
         isDragging.value = true;
         // 根据当前状态决定是选择还是取消选择
         dragMode.value = !store.selectedIndicesSet.has(index);
-        toggleIndex(index, dragMode.value);
+
+        // 处理组合字符
+        const isGrouped = el?.dataset?.grouped === "true";
+        const groupLength = parseInt(el?.dataset?.groupLength || "1", 10);
+
+        if (isGrouped && groupLength > 1) {
+          // 选中组合字符的所有索引
+          for (let i = 0; i < groupLength; i++) {
+            toggleIndex(index + i, dragMode.value);
+          }
+        } else {
+          toggleIndex(index, dragMode.value);
+        }
         lastTouchedIndex.value = index;
       }
     }
@@ -269,6 +290,8 @@ export function useExtractor() {
     if (!isDragging.value) return;
 
     const touch = e.touches[0];
+    if (!touch) return;
+
     const el = document.elementFromPoint(touch.clientX, touch.clientY) as HTMLElement | null;
     const indexStr = el?.dataset?.index;
 
@@ -276,7 +299,18 @@ export function useExtractor() {
       const index = parseInt(indexStr, 10);
       // 只有当索引变化时才处理，避免重复操作导致卡顿
       if (!isNaN(index) && index !== lastTouchedIndex.value) {
-        toggleIndex(index, dragMode.value);
+        // 处理组合字符
+        const isGrouped = el?.dataset?.grouped === "true";
+        const groupLength = parseInt(el?.dataset?.groupLength || "1", 10);
+
+        if (isGrouped && groupLength > 1) {
+          // 选中组合字符的所有索引
+          for (let i = 0; i < groupLength; i++) {
+            toggleIndex(index + i, dragMode.value);
+          }
+        } else {
+          toggleIndex(index, dragMode.value);
+        }
         lastTouchedIndex.value = index;
       }
     }
@@ -392,7 +426,7 @@ export function useExtractor() {
   function getExtractedItemIndex(charIndex: number): number {
     for (let i = 0; i < store.extractedList.length; i++) {
       const item = store.extractedList[i];
-      if (item.indices && item.indices.includes(charIndex)) {
+      if (item && item.indices && item.indices.includes(charIndex)) {
         return i;
       }
     }

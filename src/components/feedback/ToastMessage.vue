@@ -11,8 +11,7 @@ const hasToasts = computed(() => toasts.value.length > 0)
 <template>
   <Teleport to="body">
     <Transition name="fade">
-      <div v-if="hasToasts"
-        class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[100] pointer-events-none">
+      <div v-if="hasToasts" class="fixed bottom-26 left-1/2 -translate-x-1/2 z-100 pointer-events-none">
         <TransitionGroup name="toast">
           <div v-for="toast in toasts" :key="toast.id"
             class="bg-slate-800/90 backdrop-blur text-white px-5 py-3 rounded-2xl shadow-xl text-base font-medium flex items-center justify-center gap-2 min-w-[120px] pointer-events-auto cursor-pointer mb-2"
@@ -36,12 +35,12 @@ const hasToasts = computed(() => toasts.value.length > 0)
 
 .toast-enter-from {
   opacity: 0;
-  transform: translateY(-20px);
+  transform: translateY(20px);
 }
 
 .toast-leave-to {
   opacity: 0;
-  transform: translateX(100%);
+  transform: translateY(-10px);
 }
 
 .fade-enter-active,

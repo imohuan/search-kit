@@ -42,7 +42,7 @@ const documentStore = useDocumentStore()
 
 // 状态
 const isFullMode = ref(false) // 全文/片段模式
-const showOriginal = ref(false) // 原版/纯净样式，默认显示纯净样式
+const showOriginal = ref(true) // 原版/纯净样式，默认显示原版样式
 const loading = ref(false)
 const scrollContainer = ref<HTMLElement | null>(null)
 const modalContainer = ref<HTMLElement | null>(null)
@@ -61,11 +61,6 @@ const fileName = computed(() => {
   return props.result?.fileName ?? currentDocument.value?.fileName ?? '未知文档'
 })
 
-// 是否支持原始样式
-const supportsOriginalStyles = computed(() => {
-  return currentDocument.value?.hasOriginalStyles ?? false
-})
-
 /**
  * 去除HTML中的颜色样式，但保留结构类名
  */
@@ -76,9 +71,9 @@ function stripStyles(html: string): string {
   const els = div.querySelectorAll('*')
   els.forEach(el => {
     el.removeAttribute('style')
-    // 保留 docx-p 类名，用于换行
+    // 保留 docx-p 和 docx-br 类名，用于换行
     const classes = el.getAttribute('class')
-    if (classes && !classes.includes('docx-p')) {
+    if (classes && !classes.includes('docx-p') && !classes.includes('docx-br')) {
       el.removeAttribute('class')
     }
   })
@@ -106,162 +101,269 @@ function textToHtml(text: string): string {
 }
 
 /**
- * 获取HTML片段（带高亮）
- * 从HTML内容中提取指定范围的片段，并高亮关键词
+ * 获取HTML片段（带高亮）- 基于 DOM Range API
+ * 从HTML内容中提取指定范围的片段，保留原始HTML结构，并高亮关键词
  */
 function getHtmlFragment(
   html: string,
   keyword: string,
-  _maxGap: number,
-  range: number
+  maxGap: number,
+  limit: number
 ): string {
   if (!html) return ''
-  if (!keyword) return html
 
-  // 创建临时DOM解析HTML
-  const div = document.createElement('div')
-  div.innerHTML = html
-  const textContent = div.textContent || ''
+  const tempDiv = document.createElement('div')
+  tempDiv.innerHTML = html
 
-  // 查找关键词位置
-  const lowerText = textContent.toLowerCase()
-  const lowerKeyword = keyword.toLowerCase()
-  const keywordIndex = lowerText.indexOf(lowerKeyword)
-
-  if (keywordIndex === -1 && !props.isExact) {
-    // 间隔搜索模式：查找第一个字符的位置
-    const firstChar = lowerKeyword[0]
-    const firstIndex = firstChar ? lowerText.indexOf(firstChar) : -1
-    if (firstIndex === -1) {
-      // 没找到，直接高亮所有匹配字符
-      return highlightHtml(html, keyword, props.isExact)
-    }
+  // 1. 先进行高亮处理
+  if (keyword) {
+    highlightHtmlElement(tempDiv, keyword, maxGap, props.isExact)
   }
 
-  // 如果range为0，表示全文模式，只高亮不截取
-  if (range === 0) {
-    return highlightHtml(html, keyword, props.isExact)
+  // 2. 如果不需要截取（全文模式使用0表示），直接返回
+  if (!limit || limit <= 0) return tempDiv.innerHTML
+
+  // 3. 寻找截取中心点 (第一个 mark 或开头)
+  let centerNode: Node | null = null
+  let centerOffset = 0
+  const firstMark = tempDiv.querySelector('mark.highlight')
+
+  if (firstMark && firstMark.firstChild) {
+    centerNode = firstMark.firstChild
+    centerOffset = 0
+  } else {
+    // 没有匹配项，从头开始
+    const walker = document.createTreeWalker(tempDiv, NodeFilter.SHOW_TEXT)
+    centerNode = walker.nextNode()
+    centerOffset = 0
   }
 
-  // 片段模式：截取指定范围
-  const startPos = Math.max(0, keywordIndex - range)
-  const endPos = Math.min(textContent.length, keywordIndex + keyword.length + range)
+  if (!centerNode) return tempDiv.innerHTML // 空内容
 
-  // 提取片段文本
-  let snippetText = textContent.slice(startPos, endPos)
-
-  // 添加省略号
-  if (startPos > 0) snippetText = '...' + snippetText
-  if (endPos < textContent.length) snippetText = snippetText + '...'
-
-  // 转换为HTML并高亮
-  const snippetHtml = textToHtml(snippetText)
-  return highlightHtml(snippetHtml, keyword, props.isExact)
-}
-
-/**
- * 高亮HTML中的关键词
- */
-function highlightHtml(html: string, keyword: string, isExact: boolean): string {
-  if (!html || !keyword) return html
-
-  // 创建临时DOM
-  const div = document.createElement('div')
-  div.innerHTML = html
-
-  // 遍历所有文本节点并高亮
-  highlightTextNodes(div, keyword, isExact)
-
-  return div.innerHTML
-}
-
-/**
- * 递归高亮文本节点
- */
-function highlightTextNodes(node: Node, keyword: string, isExact: boolean): void {
-  if (node.nodeType === Node.TEXT_NODE) {
-    const text = node.textContent || ''
-    if (!text.trim()) return
-
-    const highlighted = isExact
-      ? highlightExactText(text, keyword)
-      : highlightIntervalText(text, keyword)
-
-    if (highlighted !== text) {
-      const span = document.createElement('span')
-      span.innerHTML = highlighted
-      node.parentNode?.replaceChild(span, node)
-    }
-  } else if (node.nodeType === Node.ELEMENT_NODE) {
-    // 跳过已经是mark标签的节点
-    if ((node as Element).tagName === 'MARK') return
-
-    // 递归处理子节点（需要复制数组，因为会修改DOM）
-    const children = Array.from(node.childNodes)
-    children.forEach(child => highlightTextNodes(child, keyword, isExact))
-  }
-}
-
-/**
- * 精确搜索高亮
- */
-function highlightExactText(text: string, keyword: string): string {
-  const lowerText = text.toLowerCase()
-  const lowerKeyword = keyword.toLowerCase()
-  const parts: string[] = []
-  let lastIndex = 0
-
-  let index = lowerText.indexOf(lowerKeyword)
-  while (index !== -1) {
-    // 添加匹配前的文本
-    if (index > lastIndex) {
-      parts.push(escapeHtml(text.slice(lastIndex, index)))
-    }
-    // 添加高亮的匹配文本
-    parts.push(`<mark class="highlight">${escapeHtml(text.slice(index, index + keyword.length))}</mark>`)
-    lastIndex = index + keyword.length
-    index = lowerText.indexOf(lowerKeyword, lastIndex)
+  // 4. 计算所有文本节点序列，定位 Range 边界
+  const textNodes: Node[] = []
+  const walker = document.createTreeWalker(tempDiv, NodeFilter.SHOW_TEXT)
+  let node: Node | null
+  while ((node = walker.nextNode())) {
+    textNodes.push(node)
   }
 
-  // 添加剩余文本
-  if (lastIndex < text.length) {
-    parts.push(escapeHtml(text.slice(lastIndex)))
+  // 找到 centerNode 在列表中的位置
+  const centerIndex = textNodes.indexOf(centerNode)
+  if (centerIndex === -1) return tempDiv.innerHTML
+
+  // 向前/向后累加字符长度，找到 startNode 和 endNode
+  let startNode: Node = centerNode
+  let startOffset = centerOffset
+  let endNode: Node = centerNode
+  let endOffset = centerNode.textContent?.length || 0
+
+  // 向前查找
+  let remaining = limit / 2
+
+  // 当前节点之前的
+  if (centerIndex >= 0) {
+    remaining -= centerOffset
+    startNode = textNodes[centerIndex]!
+    startOffset = Math.max(0, centerOffset - Math.floor(limit / 2))
   }
 
-  return parts.join('')
-}
+  for (let j = centerIndex - 1; j >= 0; j--) {
+    const len = textNodes[j]?.textContent?.length || 0
+    if (remaining <= 0) break
 
-/**
- * 间隔搜索高亮（高亮所有查询字符出现的位置）
- */
-function highlightIntervalText(text: string, keyword: string): string {
-  const lowerKeyword = keyword.toLowerCase()
-  const queryChars = new Set(lowerKeyword.split(''))
-  let result = ''
-
-  for (const char of text) {
-    if (queryChars.has(char.toLowerCase())) {
-      result += `<mark class="highlight">${escapeHtml(char)}</mark>`
+    if (remaining <= len) {
+      startNode = textNodes[j]!
+      startOffset = len - remaining
+      remaining = 0
     } else {
-      result += escapeHtml(char)
+      startNode = textNodes[j]!
+      startOffset = 0
+      remaining -= len
     }
   }
 
-  return result
+  // 向后查找
+  remaining = limit / 2
+  const currentNodeLen = textNodes[centerIndex]?.textContent?.length || 0
+  if (centerIndex < textNodes.length && textNodes[centerIndex]) {
+    remaining -= (currentNodeLen - centerOffset)
+    endNode = textNodes[centerIndex]!
+    endOffset = currentNodeLen
+  }
+
+  for (let j = centerIndex + 1; j < textNodes.length; j++) {
+    const len = textNodes[j]?.textContent?.length || 0
+    if (remaining <= 0) break
+
+    if (remaining <= len) {
+      endNode = textNodes[j]!
+      endOffset = remaining
+      remaining = 0
+    } else {
+      endNode = textNodes[j]!
+      endOffset = len
+      remaining -= len
+    }
+  }
+
+  // 5. 使用 Range 提取片段 (保留 DOM 结构)
+  try {
+    const range = document.createRange()
+    range.setStart(startNode, startOffset)
+    range.setEnd(endNode, endOffset)
+    const fragment = range.cloneContents()
+    const container = document.createElement('div')
+    container.appendChild(fragment)
+    return container.innerHTML
+  } catch (e) {
+    console.error('Range extraction failed', e)
+    return tempDiv.innerHTML // Fallback
+  }
 }
 
 /**
- * 转义HTML特殊字符
+ * 在 DOM 元素上直接进行高亮（不返回字符串，直接修改 DOM）
  */
-function escapeHtml(text: string): string {
-  const htmlEntities: Record<string, string> = {
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;'
+function highlightHtmlElement(element: HTMLElement, keyword: string, maxGap: number, isExact: boolean): void {
+  // 1. 获取所有文本节点及其在完整文本中的位置
+  const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT)
+  const textNodes: { node: Node; start: number; end: number }[] = []
+  let fullText = ''
+  let node: Node | null
+  while ((node = walker.nextNode())) {
+    textNodes.push({
+      node,
+      start: fullText.length,
+      end: fullText.length + (node.textContent?.length || 0)
+    })
+    fullText += node.textContent || ''
   }
-  return text.replace(/[&<>"']/g, char => htmlEntities[char] ?? char)
+
+  // 2. 收集所有需要高亮的精确片段
+  const highlightRanges: { start: number; end: number }[] = []
+
+  if (isExact) {
+    // 精确搜索：查找连续匹配
+    const lowerText = fullText.toLowerCase()
+    const lowerKeyword = keyword.toLowerCase()
+    let searchStart = 0
+    let index: number
+    while ((index = lowerText.indexOf(lowerKeyword, searchStart)) !== -1) {
+      highlightRanges.push({
+        start: index,
+        end: index + keyword.length
+      })
+      searchStart = index + keyword.length
+    }
+  } else {
+    // 间隔搜索：使用正则匹配
+    const regex = createSearchRegex(keyword, maxGap)
+    if (!regex) return
+
+    let match: RegExpExecArray | null
+    regex.lastIndex = 0
+
+    while ((match = regex.exec(fullText)) !== null) {
+      // regex 结构: (char)(gap)(char)(gap)...
+      // match[1], match[3]... 是关键词字符 (需要高亮)
+      // match[2], match[4]... 是间隔 (不需要高亮)
+      let currentPos = match.index
+
+      for (let i = 1; i < match.length; i++) {
+        const segment = match[i]
+        const len = segment ? segment.length : 0
+
+        // 奇数索引为关键词部分 (group 1, 3, 5...)
+        if (i % 2 === 1 && len > 0) {
+          highlightRanges.push({
+            start: currentPos,
+            end: currentPos + len
+          })
+        }
+
+        currentPos += len
+      }
+
+      if (match.index === regex.lastIndex) regex.lastIndex++
+    }
+  }
+
+  if (highlightRanges.length === 0) return
+
+  // 3. 将高亮区间应用到文本节点
+  textNodes.forEach(tn => {
+    // 找出所有落在当前文本节点范围内的高亮区间
+    const nodeMatches: { start: number; end: number }[] = []
+    highlightRanges.forEach(range => {
+      if (range.start < tn.end && range.end > tn.start) {
+        nodeMatches.push({
+          start: Math.max(range.start, tn.start) - tn.start, // 转为节点相对坐标
+          end: Math.min(range.end, tn.end) - tn.start
+        })
+      }
+    })
+
+    if (nodeMatches.length === 0) return
+
+    // 排序并合并重叠区间
+    nodeMatches.sort((a, b) => a.start - b.start)
+    const merged: { start: number; end: number }[] = []
+    let current = nodeMatches[0]!
+    for (let i = 1; i < nodeMatches.length; i++) {
+      if (nodeMatches[i]!.start <= current.end) {
+        current.end = Math.max(current.end, nodeMatches[i]!.end)
+      } else {
+        merged.push(current)
+        current = nodeMatches[i]!
+      }
+    }
+    merged.push(current)
+
+    // 4. 构建包含高亮的 Fragment 替换原节点
+    const text = tn.node.textContent || ''
+    const fragment = document.createDocumentFragment()
+    let cursor = 0
+
+    merged.forEach(m => {
+      if (m.start > cursor) {
+        fragment.appendChild(document.createTextNode(text.substring(cursor, m.start)))
+      }
+      const newMark = document.createElement('mark')
+      newMark.className = 'highlight'
+      newMark.textContent = text.substring(m.start, m.end)
+      fragment.appendChild(newMark)
+      cursor = m.end
+    })
+
+    if (cursor < text.length) {
+      fragment.appendChild(document.createTextNode(text.substring(cursor)))
+    }
+
+    // 只有父节点存在时才替换
+    if (tn.node.parentNode) {
+      tn.node.parentNode.replaceChild(fragment, tn.node)
+    }
+  })
+}
+
+/**
+ * 创建间隔搜索正则表达式
+ */
+function createSearchRegex(keyword: string, maxGap: number): RegExp | null {
+  const chars = keyword.split('').filter(c => c.trim() !== '')
+  if (chars.length === 0) return null
+
+  const escapeRegExp = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const gapPattern = `([\\s\\S]{0,${maxGap}}?)`
+  const pattern = chars.map(c => `(${escapeRegExp(c)})`).join(gapPattern)
+
+  try {
+    return new RegExp(pattern, 'gi')
+  } catch (e) {
+    console.error('Regex too complex', e)
+    return null
+  }
 }
 
 /**
@@ -278,22 +380,22 @@ const highlightedHtml = computed(() => {
 
   if (!baseHtml) return '<div class="text-gray-400 py-4">无内容可显示</div>'
 
-  // 2. 纯净模式：去除颜色样式，但保留结构
+  // 2. 应用样式模式（原版/纯净）
+  // 注意：必须在高亮之前处理，否则会破坏高亮标签
   if (!showOriginal.value) {
     baseHtml = stripStyles(baseHtml)
   }
 
-  // 3. 应用搜索高亮
+  // 3. 应用搜索高亮和片段截取
+  const maxGap = appStore.config.maxSearchGap || 30
+
   if (!isFullMode.value) {
-    // 片段模式：截取并高亮
+    // 片段模式：截取并高亮（使用 DOM Range API 保留 HTML 结构）
     const range = appStore.config.detailRange || 200
-    return getHtmlFragment(baseHtml, props.searchKeyword, appStore.config.maxSearchGap, range)
+    return getHtmlFragment(baseHtml, props.searchKeyword, maxGap, range)
   } else {
     // 全文模式：只高亮不截取
-    if (props.searchKeyword) {
-      return getHtmlFragment(baseHtml, props.searchKeyword, appStore.config.maxSearchGap, 0)
-    }
-    return baseHtml
+    return getHtmlFragment(baseHtml, props.searchKeyword, maxGap, 0)
   }
 })
 
@@ -330,8 +432,8 @@ watch(() => props.result, (newVal) => {
     // 重置为片段模式
     isFullMode.value = false
 
-    // 默认显示纯净样式（更适合阅读和高亮）
-    showOriginal.value = false
+    // 默认显示原版样式
+    showOriginal.value = true
 
     // 滚动到顶部
     nextTick(() => {

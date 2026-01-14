@@ -175,12 +175,31 @@ class SearchService {
   ): string {
     const start = Math.max(0, match.index - previewRange);
     const end = Math.min(content.length, match.index + match.length + previewRange);
-    const snippet = content.slice(start, end);
+    let snippet = content.slice(start, end);
 
-    // 调整位置偏移
-    const adjustedPositions = match.positions.map((pos) => pos - start);
+    // 添加省略号
+    if (start > 0) snippet = "..." + snippet;
+    if (end < content.length) snippet = snippet + "...";
 
-    return this.highlightPositions(snippet, adjustedPositions);
+    // 调整位置偏移（考虑省略号）
+    const offset = start > 0 ? 3 : 0; // '...' 的长度
+    const adjustedPositions = match.positions.map((pos) => pos - start + offset);
+
+    // 高亮并转换为HTML格式（保留换行）
+    const highlighted = this.highlightPositions(snippet, adjustedPositions);
+    return this.textToHtml(highlighted);
+  }
+
+  /**
+   * 将纯文本转换为带换行的HTML
+   */
+  private textToHtml(text: string): string {
+    if (!text) return "";
+    // 将换行符转换为div，确保每行显示
+    return text
+      .split("\n")
+      .map((line) => `<div class="docx-p">${line || "<br>"}</div>`)
+      .join("");
   }
 
   /**

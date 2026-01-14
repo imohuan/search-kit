@@ -34,7 +34,7 @@ const emit = defineEmits<{
 
     <!-- 高亮片段 -->
     <div
-      class="text-slate-600 leading-relaxed whitespace-pre-wrap wrap-break-word bg-slate-50/50 p-3 rounded-lg border border-slate-50 transition-all"
+      class="text-slate-600 leading-relaxed bg-slate-50/50 p-3 rounded-lg border border-slate-50 transition-all doc-content-render"
       :style="{ fontSize: `${fontSize || 14}px`, lineHeight: '1.6' }" v-html="result.highlightedSnippet" />
 
     <!-- 底部信息 -->
@@ -48,6 +48,8 @@ const emit = defineEmits<{
 </template>
 
 <style scoped>
+@reference "@/style.css";
+
 /* 高亮样式 - 与 DetailModal 保持一致 */
 :deep(mark),
 :deep(mark.highlight) {
@@ -57,5 +59,28 @@ const emit = defineEmits<{
   border-radius: 2px;
   font-weight: 600;
   border-bottom: 2px solid #eab308;
+}
+
+/* docx 段落样式 - 确保换行显示 */
+:deep(.docx-p) {
+  display: block !important;
+  min-height: 1.2em;
+  margin-bottom: 0.5em;
+  line-height: 1.6;
+  word-wrap: break-word;
+}
+
+/* docx 换行标签强制换行 */
+:deep(.docx-br) {
+  display: block;
+  content: "";
+  margin-bottom: 0.3em;
+}
+
+/* 文档内容渲染样式 */
+:deep(.doc-content-render) {
+  color: #475569;
+  line-height: 1.6;
+  word-break: break-word;
 }
 </style>
