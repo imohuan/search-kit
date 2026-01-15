@@ -109,7 +109,11 @@ export function useExtractor() {
   const editingIndex = ref(-1);
 
   // 使用优化的网格选择手势
-  const { isDragging, bindEvents: bindGridEvents, unbindEvents: unbindGridEvents } = useGridSelection({
+  const {
+    isDragging,
+    bindEvents: bindGridEvents,
+    unbindEvents: unbindGridEvents,
+  } = useGridSelection({
     selectedIndices: computed(() => store.selectedIndicesSet),
     addIndex: (index) => store.addSelectedIndex(index),
     removeIndex: (index) => store.removeSelectedIndex(index),

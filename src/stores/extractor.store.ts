@@ -106,7 +106,7 @@ export const useExtractorStore = defineStore("extractor", () => {
           .filter((l) => l.trim())
           .join("\n"),
         indices: Array.isArray(item.indices) ? item.indices : [],
-        color: item.color || COLOR_PALETTE[idx % COLOR_PALETTE.length] || '#6366f1',
+        color: item.color || COLOR_PALETTE[idx % COLOR_PALETTE.length] || "#6366f1",
       }))
       .filter((item) => item.text && item.text.trim() !== ""),
   );
@@ -140,7 +140,7 @@ export const useExtractorStore = defineStore("extractor", () => {
    * 获取颜色调色板中的颜色
    */
   function getColor(index: number): string {
-    return COLOR_PALETTE[index % COLOR_PALETTE.length] || '#6366f1';
+    return COLOR_PALETTE[index % COLOR_PALETTE.length] || "#6366f1";
   }
 
   /**
