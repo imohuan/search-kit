@@ -1,60 +1,112 @@
-# Vue 3 + TS 项目初始化指南
+# 文档智搜 Pro
 
-> ⚠️ **命令执行要求：** 项目全程在 Windows PowerShell 环境中操作，所有示例命令均以 PowerShell 语法为准，禁止使用 bash/sh 指令。
+<p align="center">
+  <img src="./image.png" alt="文档智搜 Pro" width="600">
+</p>
 
-## 1. 初始化项目
+<p align="center">
+  本地文档智能搜索工具 | 支持 PDF / DOCX / TXT 多格式
+</p>
 
-1. 创建基础工程：
-   ```bash
-   pnpm create vite [项目名称] --template vue-ts
-   ```
-2. 安装常用依赖：
-   ```bash
-   pnpm add axios mitt lodash-es @types/lodash-es pinia vue-router @vueuse/core
-   ```
-3. 安装 UI 与图标相关依赖：
-   ```bash
-   pnpm add naive-ui vfonts @vicons/material
-   ```
-4. 引入 Tailwind CSS：
+---
 
-   ```bash
-   pnpm add tailwindcss @tailwindcss/vite
-   ```
+## 功能特性
 
-   - 在 `vite.config.ts` 中启用插件：
+- **多格式支持** - 解析 PDF、DOCX、TXT 文档，提取纯文本内容
+- **智能搜索** - 精确匹配与间隔搜索双模式，结果按相关度排序
+- **本地存储** - 基于 IndexedDB，数据完全离线，无需联网
+- **选字提取** - 从字符网格中框选提取，支持连续数字/字母智能分组
+- **详情定位** - 点击搜索结果跳转详情页，高亮显示匹配位置
 
-     ```typescript
-     import { defineConfig } from "vite";
-     import tailwindcss from "@tailwindcss/vite";
+## 技术栈
 
-     export default defineConfig({
-       plugins: [tailwindcss()],
-     });
-     ```
+```
+Vue 3.5 + TypeScript 5.9 + Vite 8
+Pinia + Tailwind CSS v4 + IndexedDB
+```
 
-   - 在全局样式（如 `src/style.css`）中导入：
-     ```css
-     @import "tailwindcss";
-     ```
-   - 执行 `pnpm run dev` 验证 Tailwind 是否生效。
+## 快速开始
 
-5. 封装运行时基础能力：
-   - 在 `src/core/context.ts` 中提供全局 `context`，向外暴露 `notify`、弹窗控制以及 `message` 等接口，所有组件直接引入并调用。
-   - 在 `main.ts` 对 Vue 实例注入统一错误处理（监听 `app.config.errorHandler` 和 `window.onerror`），确保日志归集。
-   - 重构 `console.log` 等日志方法，二次封装后统一输出格式与上报逻辑，并在调试/生产自动区分开关。
+### 环境要求
 
-## 2. 项目规范
+- Node.js >= 18
+- pnpm（推荐）
 
-- 初始化前必须先与需求方多轮沟通，梳理业务背景、交互范围与验收标准后再动手。
-- 禁止编写额外长篇文档，所有约定以代码与注释自解释为准。
-- 单个组件需保持职责单一，出现臃肿时必须拆分。
-- 可抽离的 UI 结构或业务逻辑必须封装为独立组件与 hooks（如 `useXxx`）。
-- 功能实现优先复用指定依赖，严禁重复造轮子：
-  - 事件通信使用 `mitt`
-  - 常用工具函数使用 `lodash-es`
-  - 状态管理统一 `pinia`
-  - 组合式能力优先 `@vueuse/core`
-  - 图标统一来自 `@vicons/material`，按需 `import { IconName } from '@vicons/material'`
-- 目录约定：`src/hooks` 存放组合式逻辑，`src/components` 存放通用组件，页面位于 `src/views`，全局接口统一在 `src/interface.ts`（如类型较多再扩展 `src/types`）。
-- 通用工具函数集中在 `src/utils`，基础能力与上下文放置在 `src/core`，其中 `context` 必须提供 `notify`/弹窗/message 等入口并可被所有组件直接使用。
+### 安装运行
+
+```powershell
+# 安装依赖
+pnpm install
+
+# 启动开发服务器
+pnpm dev
+
+# 构建生产版本
+pnpm build
+```
+
+## 项目结构
+
+```
+src/
+├── modules/           # 业务模块
+│   ├── search/        # 搜索模块
+│   ├── library/       # 文档库模块
+│   ├── extractor/     # 选字提取模块
+│   └── detail/        # 文档详情模块
+├── components/        # 全局组件
+│   ├── layout/        # 布局组件
+│   ├── modal/         # 弹窗组件
+│   └── feedback/      # 反馈组件
+├── composables/       # 组合式函数
+├── services/          # 服务层
+├── stores/            # 状态管理
+└── types/             # 类型定义
+```
+
+## NPM Scripts
+
+| 命令 | 说明 |
+|------|------|
+| `pnpm dev` | 启动开发服务器 |
+| `pnpm build` | 类型检查 + 构建 |
+| `pnpm preview` | 预览构建产物 |
+| `pnpm test` | 运行单元测试 |
+| `pnpm lint` | OxLint 代码检查 |
+| `pnpm format` | OxFmt 格式化 |
+
+## 核心模块
+
+### 搜索模块
+
+- **精确搜索**：完全匹配关键词
+- **间隔搜索**：允许字符间有间隔，按紧密度排序
+- **符号过滤**：只匹配中英文和数字
+- **结果高亮**：高亮显示匹配位置
+
+### 文档库模块
+
+- 拖拽上传 PDF/DOCX/TXT 文件
+- 文档列表管理
+- 单条/批量删除
+
+### 选字提取模块
+
+- 字符网格可视化展示
+- 支持框选连续提取
+- 连续数字/字母智能分组
+- 预览模式切换
+
+## 开发规范
+
+详见 [docs-now/README.md](./docs-now/README.md)
+
+- 路径别名：`@` → `src/`
+- 组件命名：PascalCase.vue
+- Composable：use*.ts
+- Service：*.service.ts
+- Store：*.store.ts
+
+## 许可证
+
+MIT
